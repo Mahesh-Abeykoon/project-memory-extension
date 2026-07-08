@@ -1,0 +1,25 @@
+# Dependency directories
+node_modules/
+
+# Build outputs
+dist/
+out/
+
+# Packaged extension binaries
+*.vsix
+
+# Local memory store
+.memory/
+
+# VS Code testing artifacts
+.vscode-test/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log

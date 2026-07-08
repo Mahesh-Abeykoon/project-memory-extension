@@ -1,0 +1,70 @@
+{
+    "name": "project-memory",
+    "displayName": "Project Memory",
+    "description": "Capture the WHY behind your codebase.",
+    "publisher": "Mahesh Abeykoon",
+    "version": "1.7.0",
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "categories": ["Other"],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./dist/extension.js",
+    "contributes": {
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "project-memory",
+                    "title": "Project Memory",
+                    "icon": "media/brain.svg"
+                }
+            ]
+        },
+        "views": {
+            "project-memory": [
+                {
+                    "type": "webview",
+                    "id": "project-memory.sidebar",
+                    "name": "Memories",
+                    "icon": "media/brain.svg"
+                }
+            ]
+        },
+        "commands": [
+            {
+                "command": "project-memory.addMemory",
+                "title": "Project Memory: Add Memory at Cursor"
+            },
+            {
+                "command": "project-memory.clearAll",
+                "title": "Project Memory: Clear All Memories"
+            },
+            {
+                "command": "project-memory.focusSidebar",
+                "title": "Project Memory: Focus Sidebar"
+            }
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "project-memory.addMemory",
+                    "group": "navigation",
+                    "when": "editorHasSelection"
+                }
+            ]
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "node esbuild.js",
+        "watch": "node esbuild.js --watch"
+    },
+    "devDependencies": {
+        "@types/node": "^18.11.18",
+        "@types/vscode": "^1.75.0",
+        "esbuild": "^0.17.5",
+        "typescript": "^4.9.5"
+    }
+}
