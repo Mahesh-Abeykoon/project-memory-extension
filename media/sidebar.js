@@ -14,8 +14,24 @@ const memoriesList = document.getElementById('memoriesList');
 const searchBar = document.getElementById('searchBar');
 const refreshSelectionBtn = document.getElementById('refreshSelection');
 
+const formContainer = document.getElementById('collapsibleFormContainer');
+const formToggleBtn = document.getElementById('formToggleBtn');
+const triggerText = formToggleBtn.querySelector('.trigger-text');
+
 // Init
 vscode.postMessage({ command: 'getMemories' });
+
+// Handle collapsible form toggle
+formToggleBtn.addEventListener('click', () => {
+  formContainer.classList.toggle('active');
+  if (formContainer.classList.contains('active')) {
+    triggerText.textContent = '➖ Hide Record Form';
+    // Focus title input on expand
+    setTimeout(() => memTitleInput.focus(), 150);
+  } else {
+    triggerText.textContent = '➕ Record New Memory';
+  }
+});
 
 // Handle selection pills
 document.querySelectorAll('.type-pill').forEach(pill => {
@@ -70,6 +86,44 @@ saveBtn.addEventListener('click', () => {
   // Clear input fields
   memTitleInput.value = '';
   memDescInput.value = '';
+
+  // Collapse the form after saving
+  formContainer.classList.remove('active');
+  triggerText.textContent = '➕ Record New Memory';
+});
+
+// Handle click delegation on memories list (resolves CSP block on inline onclicks)
+memoriesList.addEventListener('click', event => {
+  const target = event.target;
+
+  // 1. Copy button click
+  const copyBtn = target.closest('.action-copy');
+  if (copyBtn) {
+    event.stopPropagation();
+    copyMemoryText(copyBtn);
+    return;
+  }
+
+  // 2. Delete button click
+  const deleteBtn = target.closest('.action-delete');
+  if (deleteBtn) {
+    event.stopPropagation();
+    const card = deleteBtn.closest('.card');
+    const id = card.getAttribute('data-id');
+    deleteMemory(id);
+    return;
+  }
+
+  // 3. Card click (jump to code)
+  const card = target.closest('.card');
+  if (card) {
+    const filePath = card.getAttribute('data-file-path');
+    const lineStart = parseInt(card.getAttribute('data-line-start'), 10);
+    const lineEnd = parseInt(card.getAttribute('data-line-end'), 10);
+    if (filePath) {
+      jumpTo(filePath, lineStart, lineEnd);
+    }
+  }
 });
 
 // Receive messages from extension
@@ -85,17 +139,68 @@ window.addEventListener('message', event => {
       activeSelection = message.selection;
       if (activeSelection) {
         selectionStatus.innerHTML = `${activeSelection.file.split('/').pop()}: L${activeSelection.lineStart}-${activeSelection.lineEnd}`;
-        selectionStatus.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+        selectionStatus.style.borderColor = 'rgba(16, 185, 129, 0.35)';
         selectionStatus.style.background = 'rgba(16, 185, 129, 0.05)';
       } else {
         selectionStatus.innerText = 'No cursor selection active';
-        selectionStatus.style.borderColor = 'rgba(255,255,255,0.15)';
-        selectionStatus.style.background = 'rgba(255,255,255,0.05)';
+        selectionStatus.style.borderColor = 'var(--vscode-input-border, rgba(255,255,255,0.08))';
+        selectionStatus.style.background = 'rgba(255,255,255,0.02)';
       }
       break;
     }
   }
 });
+
+// Relative time formatter helper
+function getRelativeTimeString(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (isNaN(date.getTime())) {
+    return 'unknown date';
+  }
+
+  if (diffMins < 1) {
+    return 'Just now';
+  } else if (diffMins < 60) {
+    return `${diffMins}m ago`;
+  } else if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  } else if (diffDays === 1) {
+    return 'Yesterday';
+  } else if (diffDays < 7) {
+    return `${diffDays}d ago`;
+  } else {
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+}
+
+// Copy reasoning to clipboard with visual feedback
+function copyMemoryText(btn) {
+  const card = btn.closest('.card');
+  const descEl = card.querySelector('.card-desc');
+  if (!descEl) return;
+  const text = descEl.innerText;
+
+  navigator.clipboard.writeText(text).then(() => {
+    const originalHtml = btn.innerHTML;
+    btn.classList.add('copied');
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    btn.title = 'Copied!';
+    
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = originalHtml;
+      btn.title = 'Copy Reasoning';
+    }, 1500);
+  }).catch(err => {
+    console.error('Failed to copy text: ', err);
+  });
+}
 
 function renderMemories() {
   const query = searchBar.value.toLowerCase().trim();
@@ -116,40 +221,53 @@ function renderMemories() {
   });
 
   if (filtered.length === 0) {
-    memoriesList.innerHTML = '<div class="empty-state">No memories found</div>';
+    memoriesList.innerHTML = `
+      <div class="empty-state">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>No memories found</span>
+        <span style="font-size: 10px; opacity: 0.7; max-width: 180px; margin-top: 4px; line-height: 1.3;">Select text in the editor, right click to record a memory or use the form above.</span>
+      </div>
+    `;
     return;
   }
 
   memoriesList.innerHTML = filtered.map(m => {
     const linkInfo = m.link ? `${m.link.file_path.split('/').pop()}: L${m.link.line_start}-${m.link.line_end}` : '';
     const fullLinkText = m.link ? `${m.link.file_path}#L${m.link.line_start}` : '';
-    const createdDate = new Date(m.created_at).toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const absoluteDate = new Date(m.created_at).toLocaleString();
+    const relativeDate = getRelativeTimeString(m.created_at);
 
     return `
-      <div class="card" data-type="${m.type}">
+      <div class="card" data-id="${m.id}" data-type="${m.type}" data-has-link="${!!m.link}" data-file-path="${m.link ? m.link.file_path : ''}" data-line-start="${m.link ? m.link.line_start : 0}" data-line-end="${m.link ? m.link.line_end : 0}" title="${m.link ? 'Click to jump to code' : ''}">
         <div class="card-actions">
-          <button class="action-btn action-delete" onclick="deleteMemory('${m.id}')" title="Delete Memory">
+          <button class="action-btn action-copy" title="Copy Reasoning">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+          <button class="action-btn action-delete" title="Delete Memory">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
           </button>
         </div>
         <div class="card-header">
           <h4 class="card-title">${escapeHtml(m.title)}</h4>
-          <span class="card-type-tag tag-${m.type}">${m.type}</span>
         </div>
         <div class="card-desc">${escapeHtml(m.description)}</div>
         <div class="card-meta">
           ${m.link ? `
-            <div class="card-link-path" onclick="jumpTo('${m.link.file_path}', ${m.link.line_start}, ${m.link.line_end})" title="Open ${fullLinkText}">
+            <div class="card-link-path" title="${fullLinkText}">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
               ${linkInfo}
             </div>
           ` : ''}
-          <div style="opacity:0.7; font-size:10px; margin-top:2px;">${createdDate} by ${m.created_by}</div>
+          <div class="card-footer-row">
+            <span class="modern-badge badge-${m.type}">
+              <span class="badge-dot"></span>
+              ${m.type}
+            </span>
+            <span class="footer-dot">•</span>
+            <span title="${absoluteDate}">${relativeDate}</span>
+            <span class="footer-dot">•</span>
+            <span>${m.created_by}</span>
+          </div>
         </div>
       </div>
     `;

@@ -189,31 +189,38 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     </button>
   </div>
 
-  <!-- Form to Record Memory -->
-  <div class="glass-panel">
-    <label style="margin-bottom: 8px;">Record Memory</label>
-    <div class="form-group">
-      <input type="text" id="memTitle" placeholder="Title (e.g. Why Redis was added)" required />
-    </div>
-    <div class="form-group">
-      <textarea id="memDesc" rows="3" placeholder="Explain the reasoning/context behind this code..." required></textarea>
-    </div>
-    <div class="form-group">
-      <label>Memory Type</label>
-      <div class="type-grid">
-        <div class="type-pill active" data-type="decision">Decision</div>
-        <div class="type-pill" data-type="bug">Bug</div>
-        <div class="type-pill" data-type="note">Note</div>
-        <div class="type-pill" data-type="feature">Feature</div>
+  <!-- Collapsible Form to Record Memory -->
+  <div class="collapsible-container" id="collapsibleFormContainer">
+    <button class="collapsible-trigger" id="formToggleBtn" title="Toggle memory creation form">
+      <span class="trigger-text">➕ Record New Memory</span>
+      <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="collapsible-content" id="formContent">
+      <div class="glass-panel">
+        <div class="form-group">
+          <input type="text" id="memTitle" placeholder="Title (e.g. Why Redis was added)" required />
+        </div>
+        <div class="form-group">
+          <textarea id="memDesc" rows="3" placeholder="Explain the reasoning/context behind this code..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Memory Type</label>
+          <div class="type-grid">
+            <div class="type-pill active" data-type="decision">🧠 Decision</div>
+            <div class="type-pill" data-type="bug">🐞 Bug</div>
+            <div class="type-pill" data-type="note">📝 Note</div>
+            <div class="type-pill" data-type="feature">🌟 Feature</div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Linked Code Context</label>
+          <div id="selectionStatus" class="selection-tag">No cursor selection active</div>
+        </div>
+
+        <button class="btn-primary" id="saveMemoryBtn">Save Memory</button>
       </div>
     </div>
-    
-    <div class="form-group">
-      <label>Linked Code Context</label>
-      <div id="selectionStatus" class="selection-tag">No cursor selection active</div>
-    </div>
-
-    <button class="btn-primary" id="saveMemoryBtn">Save Memory</button>
   </div>
 
   <!-- Search and Filtering -->

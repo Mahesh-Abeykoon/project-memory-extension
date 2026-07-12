@@ -35,7 +35,7 @@
         "commands": [
             {
                 "command": "project-memory.addMemory",
-                "title": "Project Memory: Add Memory at Cursor"
+                "title": "🧠 Add to Project Memory"
             },
             {
                 "command": "project-memory.clearAll",
