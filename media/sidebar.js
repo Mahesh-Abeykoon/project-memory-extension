@@ -4,6 +4,7 @@ let activeSelection = null;
 let memoriesData = [];
 let activeType = 'decision';
 let currentFilter = 'all';
+let editingMemoryId = null;
 
 // UI elements
 const memTitleInput = document.getElementById('memTitle');
@@ -26,7 +27,6 @@ formToggleBtn.addEventListener('click', () => {
   formContainer.classList.toggle('active');
   if (formContainer.classList.contains('active')) {
     triggerText.textContent = '➖ Hide Record Form';
-    // Focus title input on expand
     setTimeout(() => memTitleInput.focus(), 150);
   } else {
     triggerText.textContent = '➕ Record New Memory';
@@ -96,7 +96,67 @@ saveBtn.addEventListener('click', () => {
 memoriesList.addEventListener('click', event => {
   const target = event.target;
 
-  // 1. Copy button click
+  // 1. Type pill selection inside Edit Form
+  const editTypePill = target.closest('.edit-type-grid .type-pill');
+  if (editTypePill) {
+    event.stopPropagation();
+    const parentGrid = editTypePill.closest('.edit-type-grid');
+    parentGrid.querySelectorAll('.type-pill').forEach(p => p.classList.remove('active'));
+    editTypePill.classList.add('active');
+    return;
+  }
+
+  // 2. Save Edit button click
+  const saveEditBtn = target.closest('.btn-save-edit');
+  if (saveEditBtn) {
+    event.stopPropagation();
+    const card = saveEditBtn.closest('.card');
+    const id = card.getAttribute('data-id');
+    const titleInput = card.querySelector('.edit-title-input');
+    const descInput = card.querySelector('.edit-desc-input');
+    const activePill = card.querySelector('.edit-type-grid .type-pill.active');
+
+    const title = titleInput ? titleInput.value.trim() : '';
+    const description = descInput ? descInput.value.trim() : '';
+    const type = activePill ? activePill.getAttribute('data-type') : 'note';
+
+    if (!title || !description) {
+      return;
+    }
+
+    vscode.postMessage({
+      command: 'updateMemory',
+      id,
+      title,
+      description,
+      type
+    });
+
+    editingMemoryId = null;
+    return;
+  }
+
+  // 3. Cancel Edit button click
+  const cancelEditBtn = target.closest('.btn-cancel-edit');
+  if (cancelEditBtn) {
+    event.stopPropagation();
+    editingMemoryId = null;
+    renderMemories();
+    return;
+  }
+
+  // 4. Edit icon button click
+  const editBtn = target.closest('.action-edit');
+  if (editBtn) {
+    event.stopPropagation();
+    const card = editBtn.closest('.card');
+    const id = card.getAttribute('data-id');
+    editingMemoryId = (editingMemoryId === id) ? null : id;
+    renderMemories();
+    return;
+  }
+
+  // 5. Copy button click
   const copyBtn = target.closest('.action-copy');
   if (copyBtn) {
     event.stopPropagation();
@@ -104,19 +164,22 @@ memoriesList.addEventListener('click', event => {
     return;
   }
 
-  // 2. Delete button click
+  // 6. Delete button click
   const deleteBtn = target.closest('.action-delete');
   if (deleteBtn) {
     event.stopPropagation();
     const card = deleteBtn.closest('.card');
     const id = card.getAttribute('data-id');
-    deleteMemory(id);
+    vscode.postMessage({
+      command: 'deleteMemory',
+      id
+    });
     return;
   }
 
-  // 3. Card click (jump to code)
+  // 7. Card click (jump to code)
   const card = target.closest('.card');
-  if (card) {
+  if (card && !card.classList.contains('edit-mode-card')) {
     const filePath = card.getAttribute('data-file-path');
     const lineStart = parseInt(card.getAttribute('data-line-start'), 10);
     const lineEnd = parseInt(card.getAttribute('data-line-end'), 10);
@@ -206,12 +269,10 @@ function renderMemories() {
   const query = searchBar.value.toLowerCase().trim();
   
   const filtered = memoriesData.filter(m => {
-    // filter by type tab
     if (currentFilter !== 'all' && m.type !== currentFilter) {
       return false;
     }
     
-    // search matching title, description or file path
     const matchesQuery = 
       m.title.toLowerCase().includes(query) || 
       m.description.toLowerCase().includes(query) || 
@@ -237,9 +298,43 @@ function renderMemories() {
     const absoluteDate = new Date(m.created_at).toLocaleString();
     const relativeDate = getRelativeTimeString(m.created_at);
 
+    // If card is currently being edited, render inline edit form
+    if (editingMemoryId === m.id) {
+      return `
+        <div class="card edit-mode-card" data-id="${m.id}" data-type="${m.type}">
+          <div class="edit-form">
+            <div class="form-group">
+              <label>Edit Title</label>
+              <input type="text" class="edit-title-input" value="${escapeHtml(m.title)}" required />
+            </div>
+            <div class="form-group">
+              <label>Edit Reasoning</label>
+              <textarea class="edit-desc-input" rows="3" required>${escapeHtml(m.description)}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Memory Type</label>
+              <div class="type-grid edit-type-grid">
+                <div class="type-pill ${m.type === 'decision' ? 'active' : ''}" data-type="decision">🧠 Decision</div>
+                <div class="type-pill ${m.type === 'bug' ? 'active' : ''}" data-type="bug">🐞 Bug</div>
+                <div class="type-pill ${m.type === 'note' ? 'active' : ''}" data-type="note">📝 Note</div>
+                <div class="type-pill ${m.type === 'feature' ? 'active' : ''}" data-type="feature">🌟 Feature</div>
+              </div>
+            </div>
+            <div class="edit-actions-row">
+              <button class="btn-primary btn-save-edit">Save Changes</button>
+              <button class="btn-secondary btn-cancel-edit">Cancel</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     return `
       <div class="card" data-id="${m.id}" data-type="${m.type}" data-has-link="${!!m.link}" data-file-path="${m.link ? m.link.file_path : ''}" data-line-start="${m.link ? m.link.line_start : 0}" data-line-end="${m.link ? m.link.line_end : 0}" title="${m.link ? 'Click to jump to code' : ''}">
         <div class="card-actions">
+          <button class="action-btn action-edit" title="Edit Memory">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
           <button class="action-btn action-copy" title="Copy Reasoning">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           </button>
@@ -286,15 +381,6 @@ function jumpTo(filePath, lineStart, lineEnd) {
     lineStart,
     lineEnd
   });
-}
-
-function deleteMemory(id) {
-  if (confirm('Are you sure you want to delete this memory? This cannot be undone.')) {
-    vscode.postMessage({
-      command: 'deleteMemory',
-      id
-    });
-  }
 }
 
 function escapeHtml(str) {

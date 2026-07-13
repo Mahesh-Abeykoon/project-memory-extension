@@ -71,14 +71,35 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           }
           break;
         }
-        case 'deleteMemory': {
-          const success = this._memoryStore.deleteMemory(data.id);
+        case 'updateMemory': {
+          const success = this._memoryStore.updateMemory(data.id, data.title, data.description, data.type as MemoryType);
           if (success) {
-            vscode.window.showInformationMessage('Memory deleted.');
+            vscode.window.showInformationMessage(`Memory "${data.title}" updated successfully!`);
             this.sendMemories();
             vscode.commands.executeCommand('project-memory.refreshDecorations');
           } else {
-            vscode.window.showErrorMessage('Failed to delete memory.');
+            vscode.window.showErrorMessage('Failed to update memory.');
+          }
+          break;
+        }
+        case 'deleteMemory': {
+          const memory = this._memoryStore.getMemoryById(data.id);
+          const titleLabel = memory ? `"${memory.title}"` : 'this memory';
+          const confirm = await vscode.window.showWarningMessage(
+            `Are you sure you want to delete ${titleLabel}?`,
+            { modal: true },
+            'Delete'
+          );
+          
+          if (confirm === 'Delete') {
+            const success = this._memoryStore.deleteMemory(data.id);
+            if (success) {
+              vscode.window.showInformationMessage('Memory deleted.');
+              this.sendMemories();
+              vscode.commands.executeCommand('project-memory.refreshDecorations');
+            } else {
+              vscode.window.showErrorMessage('Failed to delete memory.');
+            }
           }
           break;
         }

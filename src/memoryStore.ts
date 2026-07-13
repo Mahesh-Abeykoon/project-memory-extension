@@ -155,6 +155,22 @@ export class MemoryStore {
   }
 
   /**
+   * Update an existing memory's details.
+   */
+  public updateMemory(memoryId: string, title: string, description: string, type: MemoryType): boolean {
+    const memory = this.currentDb.memories.find(m => m.id === memoryId);
+    if (!memory) {
+      return false;
+    }
+
+    memory.title = title.trim();
+    memory.description = description.trim();
+    memory.type = type;
+    this.saveDatabase();
+    return true;
+  }
+
+  /**
    * Delete a memory and all its links.
    */
   public deleteMemory(memoryId: string): boolean {
