@@ -276,7 +276,8 @@ function renderMemories() {
     const matchesQuery = 
       m.title.toLowerCase().includes(query) || 
       m.description.toLowerCase().includes(query) || 
-      (m.link && m.link.file_path.toLowerCase().includes(query));
+      (m.link && m.link.file_path.toLowerCase().includes(query)) ||
+      (m.link && m.link.symbol_name && m.link.symbol_name.toLowerCase().includes(query));
       
     return matchesQuery;
   });
@@ -353,9 +354,17 @@ function renderMemories() {
         ` : ''}
         <div class="card-meta">
           ${m.link ? `
-            <div class="card-link-path" title="${fullLinkText}">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              ${linkInfo}
+            <div class="card-link-row">
+              <div class="card-link-path" title="${fullLinkText}">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                ${linkInfo}
+              </div>
+              ${m.link.symbol_name ? `
+                <span class="symbol-badge" title="${m.link.symbol_type || 'symbol'}: ${escapeHtml(m.link.symbol_name)}">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg>
+                  ${escapeHtml(m.link.symbol_name)}
+                </span>
+              ` : ''}
             </div>
           ` : ''}
           <div class="card-footer-row">

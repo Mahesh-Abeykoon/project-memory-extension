@@ -100,7 +100,9 @@ export class MemoryStore {
     lineStart: number,
     lineEnd: number,
     codeSnippet?: string,
-    createdBy = 'Developer'
+    createdBy = 'Developer',
+    symbolName?: string,
+    symbolType?: string
   ): { memory: Memory; link: MemoryLink } | null {
     this.ensureInitialized(); // Re-check if workspace loaded late
     const dbPath = this.getDbPath();
@@ -140,6 +142,8 @@ export class MemoryStore {
     const link: MemoryLink = {
       memory_id: memoryId,
       file_path: normalizedPath,
+      symbol_name: symbolName || undefined,
+      symbol_type: symbolType || undefined,
       line_start: lineStart,
       line_end: lineEnd,
       code_snippet: codeSnippet ? codeSnippet.trim() : undefined,

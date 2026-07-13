@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { MemoryStore } from './memoryStore';
 import { SidebarProvider } from './sidebarProvider';
 import { MemoryType } from './types';
+import { getEnclosingSymbol } from './symbolHelper';
 
 // Global decoration types for memory categories
 let decorationTypes: Record<string, vscode.TextEditorDecorationType> = {};
@@ -68,6 +69,9 @@ export function activate(context: vscode.ExtensionContext) {
       );
       if (!typeSelection) {return;}
 
+      // Auto-detect enclosing code symbol (function, class, method)
+      const symbolInfo = await getEnclosingSymbol(editor.document, selection.start);
+
       // Save memory
       const result = memoryStore.addMemory(
         title,
@@ -76,7 +80,10 @@ export function activate(context: vscode.ExtensionContext) {
         filePath,
         lineStart,
         lineEnd,
-        selectedText
+        selectedText,
+        'Developer',
+        symbolInfo?.name,
+        symbolInfo?.kind
       );
 
       if (result) {

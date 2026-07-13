@@ -2,6 +2,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { MemoryStore } from './memoryStore';
 import { MemoryType } from './types';
+import { getEnclosingSymbol } from './symbolHelper';
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'project-memory.sidebar';
@@ -53,6 +54,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           const filePath = doc.fileName;
           const selectedText = doc.getText(selection);
 
+          // Auto-detect enclosing code symbol (function, class, method)
+          const symbolInfo = await getEnclosingSymbol(doc, selection.start);
+
           const result = this._memoryStore.addMemory(
             data.title,
             data.description,
@@ -60,7 +64,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             filePath,
             lineStart,
             lineEnd,
-            selectedText
+            selectedText,
+            'Developer',
+            symbolInfo?.name,
+            symbolInfo?.kind
           );
 
           if (result) {

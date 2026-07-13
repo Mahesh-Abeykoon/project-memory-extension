@@ -470,6 +470,32 @@ button.btn-primary:hover {
   padding-top: 6px;
 }
 
+.card-link-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.symbol-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 9.5px;
+  font-weight: 500;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--vscode-badge-background, rgba(255, 255, 255, 0.08));
+  color: var(--vscode-badge-foreground, var(--vscode-foreground));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  letter-spacing: 0.2px;
+}
+
+.symbol-badge svg {
+  opacity: 0.75;
+}
+
 .card-link-path {
   font-family: var(--vscode-editor-font-family, monospace);
   color: var(--vscode-textLink-foreground);
