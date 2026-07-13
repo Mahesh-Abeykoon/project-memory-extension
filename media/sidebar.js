@@ -251,6 +251,11 @@ function renderMemories() {
           <h4 class="card-title">${escapeHtml(m.title)}</h4>
         </div>
         <div class="card-desc">${escapeHtml(m.description)}</div>
+        ${m.link && m.link.code_snippet ? `
+          <div class="card-code-container">
+            <pre class="card-code-snippet"><code>${escapeHtml(m.link.code_snippet)}</code></pre>
+          </div>
+        ` : ''}
         <div class="card-meta">
           ${m.link ? `
             <div class="card-link-path" title="${fullLinkText}">

@@ -142,6 +142,7 @@ export class MemoryStore {
       file_path: normalizedPath,
       line_start: lineStart,
       line_end: lineEnd,
+      code_snippet: codeSnippet ? codeSnippet.trim() : undefined,
       context_before: contextBefore || undefined,
       context_after: contextAfter || undefined
     };
