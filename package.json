@@ -48,6 +48,10 @@
             {
                 "command": "project-memory.exportMarkdown",
                 "title": "Project Memory: Export Memories as Markdown (PR / Docs)"
+            },
+            {
+                "command": "project-memory.scanComments",
+                "title": "Project Memory: Scan Workspace Comments"
             }
         ],
         "menus": {

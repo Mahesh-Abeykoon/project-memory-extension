@@ -2,8 +2,10 @@ const vscode = acquireVsCodeApi();
 
 let activeSelection = null;
 let memoriesData = [];
+let scannedCommentGroups = [];
 let activeType = 'decision';
 let currentFilter = 'all';
+let activeTokenFilter = 'ALL';
 let editingMemoryId = null;
 
 // UI elements
@@ -20,8 +22,39 @@ const formContainer = document.getElementById('collapsibleFormContainer');
 const formToggleBtn = document.getElementById('formToggleBtn');
 const triggerText = formToggleBtn.querySelector('.trigger-text');
 
+// Main Section Navigation Elements
+const tabNavMemories = document.getElementById('tabNavMemories');
+const tabNavComments = document.getElementById('tabNavComments');
+const memoriesSection = document.getElementById('memoriesSection');
+const commentsSection = document.getElementById('commentsSection');
+
+// Comment UI Elements
+const scanCommentsBtn = document.getElementById('scanCommentsBtn');
+const commentsSearchBar = document.getElementById('commentsSearchBar');
+const commentsList = document.getElementById('commentsList');
+
 // Init
 vscode.postMessage({ command: 'getMemories' });
+
+// Main Section Tab Switcher
+tabNavMemories.addEventListener('click', () => {
+  tabNavMemories.classList.add('active');
+  tabNavComments.classList.remove('active');
+  memoriesSection.classList.add('active');
+  commentsSection.classList.remove('active');
+});
+
+tabNavComments.addEventListener('click', () => {
+  tabNavComments.classList.add('active');
+  tabNavMemories.classList.remove('active');
+  commentsSection.classList.add('active');
+  memoriesSection.classList.remove('active');
+
+  // Trigger scan if comments list is empty
+  if (scannedCommentGroups.length === 0) {
+    vscode.postMessage({ command: 'scanComments' });
+  }
+});
 
 // Handle collapsible form toggle
 formToggleBtn.addEventListener('click', () => {
@@ -43,24 +76,44 @@ document.querySelectorAll('.type-pill').forEach(pill => {
   });
 });
 
-// Handle filter tabs
-document.querySelectorAll('.tab').forEach(tab => {
+// Handle memory filter tabs
+document.querySelectorAll('#tabsBar .tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#tabsBar .tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     currentFilter = tab.getAttribute('data-filter');
     renderMemories();
   });
 });
 
-// Handle search input
+// Handle comment token filter tabs
+document.querySelectorAll('#commentTokensBar .tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('#commentTokensBar .tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeTokenFilter = tab.getAttribute('data-token-filter');
+    renderComments();
+  });
+});
+
+// Handle search inputs
 searchBar.addEventListener('input', () => {
   renderMemories();
+});
+
+commentsSearchBar.addEventListener('input', () => {
+  renderComments();
 });
 
 // Refresh selection
 refreshSelectionBtn.addEventListener('click', () => {
   vscode.postMessage({ command: 'refreshSelection' });
+});
+
+// Trigger comment scan
+scanCommentsBtn.addEventListener('click', () => {
+  commentsList.innerHTML = '<div class="empty-state">Scanning workspace comments...</div>';
+  vscode.postMessage({ command: 'scanComments' });
 });
 
 // Export Markdown Report
@@ -104,11 +157,11 @@ saveBtn.addEventListener('click', () => {
   triggerText.textContent = '➕ Record New Memory';
 });
 
-// Handle click delegation on memories list (resolves CSP block on inline onclicks)
+// Handle click delegation on memories list
 memoriesList.addEventListener('click', event => {
   const target = event.target;
 
-  // 1. Type pill selection inside Edit Form
+  // Type pill selection inside Edit Form
   const editTypePill = target.closest('.edit-type-grid .type-pill');
   if (editTypePill) {
     event.stopPropagation();
@@ -118,7 +171,7 @@ memoriesList.addEventListener('click', event => {
     return;
   }
 
-  // 2. Save Edit button click
+  // Save Edit button click
   const saveEditBtn = target.closest('.btn-save-edit');
   if (saveEditBtn) {
     event.stopPropagation();
@@ -151,7 +204,7 @@ memoriesList.addEventListener('click', event => {
     return;
   }
 
-  // 3. Cancel Edit button click
+  // Cancel Edit button click
   const cancelEditBtn = target.closest('.btn-cancel-edit');
   if (cancelEditBtn) {
     event.stopPropagation();
@@ -160,7 +213,7 @@ memoriesList.addEventListener('click', event => {
     return;
   }
 
-  // 4. Edit icon button click
+  // Edit icon button click
   const editBtn = target.closest('.action-edit');
   if (editBtn) {
     event.stopPropagation();
@@ -171,7 +224,7 @@ memoriesList.addEventListener('click', event => {
     return;
   }
 
-  // 5. Re-sync snippet button click
+  // Re-sync snippet button click
   const resyncBtn = target.closest('.action-resync');
   if (resyncBtn) {
     event.stopPropagation();
@@ -184,7 +237,7 @@ memoriesList.addEventListener('click', event => {
     return;
   }
 
-  // 6. Copy button click
+  // Copy button click
   const copyBtn = target.closest('.action-copy');
   if (copyBtn) {
     event.stopPropagation();
@@ -192,7 +245,7 @@ memoriesList.addEventListener('click', event => {
     return;
   }
 
-  // 7. Delete button click
+  // Delete button click
   const deleteBtn = target.closest('.action-delete');
   if (deleteBtn) {
     event.stopPropagation();
@@ -205,7 +258,7 @@ memoriesList.addEventListener('click', event => {
     return;
   }
 
-  // 8. Card click (jump to code)
+  // Card click (jump to code)
   const card = target.closest('.card');
   if (card && !card.classList.contains('edit-mode-card')) {
     const filePath = card.getAttribute('data-file-path');
@@ -217,6 +270,43 @@ memoriesList.addEventListener('click', event => {
   }
 });
 
+// Handle click delegation on comments list
+commentsList.addEventListener('click', event => {
+  const target = event.target;
+
+  // Convert comment to Memory button
+  const convertBtn = target.closest('.action-convert-comment');
+  if (convertBtn) {
+    event.stopPropagation();
+    const commentCard = convertBtn.closest('.comment-card');
+    const filePath = commentCard.getAttribute('data-file-path');
+    const line = parseInt(commentCard.getAttribute('data-line'), 10);
+    const token = commentCard.getAttribute('data-token');
+    const body = commentCard.getAttribute('data-body');
+    const text = commentCard.getAttribute('data-text');
+
+    vscode.postMessage({
+      command: 'convertCommentToMemory',
+      filePath,
+      line,
+      token,
+      body,
+      text
+    });
+    return;
+  }
+
+  // Jump to code when clicking on a comment card
+  const commentCard = target.closest('.comment-card');
+  if (commentCard) {
+    const filePath = commentCard.getAttribute('data-file-path');
+    const line = parseInt(commentCard.getAttribute('data-line'), 10);
+    if (filePath && !isNaN(line)) {
+      jumpTo(filePath, line, line);
+    }
+  }
+});
+
 // Receive messages from extension
 window.addEventListener('message', event => {
   const message = event.data;
@@ -224,6 +314,11 @@ window.addEventListener('message', event => {
     case 'setMemories': {
       memoriesData = message.memories;
       renderMemories();
+      break;
+    }
+    case 'setComments': {
+      scannedCommentGroups = message.commentGroups || [];
+      renderComments();
       break;
     }
     case 'setActiveSelection': {
@@ -474,6 +569,104 @@ function renderMemories() {
   }).join('');
 }
 
+function renderComments() {
+  const query = commentsSearchBar.value.toLowerCase().trim();
+
+  // Aggregate all comments across file groups
+  let allComments = [];
+  scannedCommentGroups.forEach(group => {
+    group.comments.forEach(comment => {
+      allComments.push(comment);
+    });
+  });
+
+  // Calculate live counts
+  const countAll = allComments.length;
+  const countTODO = allComments.filter(c => c.token === 'TODO').length;
+  const countFIXME = allComments.filter(c => c.token === 'FIXME').length;
+  const countBUG = allComments.filter(c => c.token === 'BUG').length;
+  const countREASON = allComments.filter(c => c.token === 'REASON' || c.token === 'MEMORY').length;
+  const countNOTE = allComments.filter(c => c.token === 'NOTE' || c.token === 'OPTIMIZE').length;
+
+  document.getElementById('countTokenAll').textContent = countAll;
+  document.getElementById('countTokenTODO').textContent = countTODO;
+  document.getElementById('countTokenFIXME').textContent = countFIXME;
+  document.getElementById('countTokenBUG').textContent = countBUG;
+  document.getElementById('countTokenREASON').textContent = countREASON;
+  document.getElementById('countTokenNOTE').textContent = countNOTE;
+
+  // Filter groups
+  const filteredGroups = [];
+
+  scannedCommentGroups.forEach(group => {
+    const matchingComments = group.comments.filter(c => {
+      // Token filter match
+      if (activeTokenFilter === 'TODO' && c.token !== 'TODO') return false;
+      if (activeTokenFilter === 'FIXME' && c.token !== 'FIXME') return false;
+      if (activeTokenFilter === 'BUG' && c.token !== 'BUG') return false;
+      if (activeTokenFilter === 'REASON' && (c.token !== 'REASON' && c.token !== 'MEMORY')) return false;
+      if (activeTokenFilter === 'NOTE' && (c.token !== 'NOTE' && c.token !== 'OPTIMIZE')) return false;
+
+      // Text query match
+      if (query) {
+        const matchesText =
+          c.text.toLowerCase().includes(query) ||
+          c.body.toLowerCase().includes(query) ||
+          c.token.toLowerCase().includes(query) ||
+          c.filePath.toLowerCase().includes(query);
+        if (!matchesText) return false;
+      }
+
+      return true;
+    });
+
+    if (matchingComments.length > 0) {
+      filteredGroups.push({
+        ...group,
+        comments: matchingComments
+      });
+    }
+  });
+
+  if (filteredGroups.length === 0) {
+    commentsList.innerHTML = `
+      <div class="empty-state">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>No matching comments found</span>
+        <span style="font-size: 10px; opacity: 0.7; max-width: 180px; margin-top: 4px; line-height: 1.3;">Click "Scan Workspace Comments" or change token filter.</span>
+      </div>
+    `;
+    return;
+  }
+
+  commentsList.innerHTML = filteredGroups.map(group => `
+    <div class="comment-file-group">
+      <div class="file-group-header">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="file-group-path">${escapeHtml(group.filePath)}</span>
+        <span class="file-group-count">${group.comments.length}</span>
+      </div>
+
+      <div class="file-comments-body">
+        ${group.comments.map(c => `
+          <div class="comment-card comment-token-${c.token.toLowerCase()}" data-file-path="${escapeHtml(c.filePath)}" data-line="${c.line}" data-token="${escapeHtml(c.token)}" data-body="${escapeHtml(c.body)}" data-text="${escapeHtml(c.text)}">
+            <div class="comment-card-top">
+              <span class="token-badge badge-${c.token.toLowerCase()}">${c.token}</span>
+              <span class="comment-line-num">L${c.line}</span>
+            </div>
+            <div class="comment-body-text">${escapeHtml(c.body || c.text)}</div>
+            <div class="comment-card-actions">
+              <button class="btn-convert-memory action-convert-comment" title="Promote comment into a permanent Project Memory">
+                🧠 Convert to Memory
+              </button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
 function jumpTo(filePath, lineStart, lineEnd) {
   vscode.postMessage({
     command: 'jumpTo',
@@ -484,7 +677,7 @@ function jumpTo(filePath, lineStart, lineEnd) {
 }
 
 function escapeHtml(str) {
-  return str
+  return (str || '')
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")

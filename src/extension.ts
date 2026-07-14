@@ -3,11 +3,12 @@ import { MemoryStore } from './memoryStore';
 import { SidebarProvider } from './sidebarProvider';
 import { MemoryType } from './types';
 import { getEnclosingSymbol } from './symbolHelper';
-
 import { exportMarkdownCommand } from './exportHelper';
+import { CommentHighlighter } from './commentHighlighter';
 
 // Global decoration types for memory categories
 let decorationTypes: Record<string, vscode.TextEditorDecorationType> = {};
+let commentHighlighter: CommentHighlighter | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Project Memory extension is now active!');
@@ -15,7 +16,13 @@ export function activate(context: vscode.ExtensionContext) {
   const memoryStore = new MemoryStore();
   const sidebarProvider = new SidebarProvider(context.extensionUri, memoryStore);
 
-  // Initialize decoration rendering options
+  // Initialize comment highlighter for glowing comment tokens
+  commentHighlighter = new CommentHighlighter();
+  context.subscriptions.push({
+    dispose: () => commentHighlighter?.dispose()
+  });
+
+  // Initialize decoration rendering options for memory links
   initializeDecorationTypes();
 
   // Register Webview Sidebar
@@ -120,6 +127,14 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  // Command to scan workspace comments
+  context.subscriptions.push(
+    vscode.commands.registerCommand('project-memory.scanComments', async () => {
+      await sidebarProvider.sendScannedComments();
+      vscode.commands.executeCommand('project-memory.focusSidebar');
+    })
+  );
+
   // Command to force refresh decorations from webview operations
   context.subscriptions.push(
     vscode.commands.registerCommand('project-memory.refreshDecorations', () => {
@@ -145,6 +160,7 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.window.onDidChangeActiveTextEditor(editor => {
     if (editor) {
       updateDecorations(editor, memoryStore);
+      commentHighlighter?.updateEditor(editor);
     }
   }, null, context.subscriptions);
 
@@ -152,11 +168,15 @@ export function activate(context: vscode.ExtensionContext) {
     const editor = vscode.window.activeTextEditor;
     if (editor && event.document === editor.document) {
       updateDecorations(editor, memoryStore);
+      commentHighlighter?.updateEditor(editor);
     }
   }, null, context.subscriptions);
 
   // Initial decoration run
   triggerUpdateDecorations(memoryStore);
+  if (vscode.window.activeTextEditor) {
+    commentHighlighter.updateEditor(vscode.window.activeTextEditor);
+  }
 
   // Register CodeLens Provider
   context.subscriptions.push(
@@ -366,4 +386,5 @@ class MemoryHoverProvider implements vscode.HoverProvider {
 export function deactivate() {
   // Clear all decoration styles
   Object.values(decorationTypes).forEach(dec => dec.dispose());
+  commentHighlighter?.dispose();
 }

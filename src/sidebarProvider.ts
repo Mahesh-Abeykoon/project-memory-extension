@@ -3,10 +3,12 @@ import * as vscode from 'vscode';
 import { MemoryStore } from './memoryStore';
 import { MemoryType } from './types';
 import { getEnclosingSymbol } from './symbolHelper';
+import { CommentScanner } from './commentScanner';
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'project-memory.sidebar';
   private _view?: vscode.WebviewView;
+  private readonly _commentScanner: CommentScanner = new CommentScanner();
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -33,6 +35,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         case 'getMemories': {
           this.sendMemories();
           this.sendActiveSelection();
+          break;
+        }
+        case 'scanComments': {
+          await this.sendScannedComments();
+          break;
+        }
+        case 'convertCommentToMemory': {
+          await this.convertCommentToMemory(data);
           break;
         }
         case 'refreshSelection': {
@@ -178,6 +188,87 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   /**
+   * Scans workspace comments and sends results to the webview.
+   */
+  public async sendScannedComments() {
+    if (!this._view) {return;}
+    const commentGroups = await this._commentScanner.scanWorkspace();
+    this._view.webview.postMessage({
+      command: 'setComments',
+      commentGroups
+    });
+  }
+
+  /**
+   * Converts a scanned code comment into a permanent Project Memory record.
+   */
+  private async convertCommentToMemory(data: {
+    filePath: string;
+    line: number;
+    token: string;
+    body: string;
+    text: string;
+  }) {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      vscode.window.showErrorMessage('No active workspace folder found.');
+      return;
+    }
+
+    const rootPath = workspaceFolders[0].uri.fsPath;
+    const fullPath = path.join(rootPath, data.filePath);
+
+    let doc: vscode.TextDocument;
+    try {
+      doc = await vscode.workspace.openTextDocument(vscode.Uri.file(fullPath));
+    } catch (err) {
+      vscode.window.showErrorMessage(`Unable to open target file for comment conversion: ${data.filePath}`);
+      return;
+    }
+
+    const pos = new vscode.Position(Math.max(0, data.line - 1), 0);
+    const symbolInfo = await getEnclosingSymbol(doc, pos);
+
+    // Map comment token to MemoryType
+    let memoryType: MemoryType = 'note';
+    const token = data.token.toUpperCase();
+    if (token === 'FIXME' || token === 'BUG') {
+      memoryType = 'bug';
+    } else if (token === 'REASON' || token === 'MEMORY') {
+      memoryType = 'decision';
+    } else if (token === 'OPTIMIZE') {
+      memoryType = 'feature';
+    } else {
+      memoryType = 'note';
+    }
+
+    const title = `[${data.token}] ${data.body || 'Actionable Comment'}`;
+    const description = `Promoted from codebase comment on Line ${data.line}:\n\`${data.text}\``;
+    const tags = ['comment-scanner', data.token.toLowerCase()];
+
+    const result = this._memoryStore.addMemory(
+      title,
+      description,
+      memoryType,
+      fullPath,
+      data.line,
+      data.line,
+      data.text,
+      'Developer (Promoted)',
+      symbolInfo?.name,
+      symbolInfo?.kind,
+      tags
+    );
+
+    if (result) {
+      vscode.window.showInformationMessage(`🧠 Comment promoted to Project Memory: "${title}"!`);
+      this.sendMemories();
+      await this.sendScannedComments();
+      vscode.commands.executeCommand('project-memory.refreshDecorations');
+    }
+  }
+
+  /**
    * Send the current list of memories combined with their links to the Webview.
    */
   public sendMemories() {
@@ -268,62 +359,105 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     </div>
   </div>
 
-  <!-- Collapsible Form to Record Memory -->
-  <div class="collapsible-container" id="collapsibleFormContainer">
-    <button class="collapsible-trigger" id="formToggleBtn" title="Toggle memory creation form">
-      <span class="trigger-text">➕ Record New Memory</span>
-      <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+  <!-- Main View Navigation Tabs -->
+  <div class="main-view-tabs">
+    <button class="main-tab active" id="tabNavMemories" data-target="memoriesSection">
+      <span>🧠 Memories</span>
     </button>
-    <div class="collapsible-content" id="formContent">
-      <div class="glass-panel">
-        <div class="form-group">
-          <input type="text" id="memTitle" placeholder="Title (e.g. Why Redis was added)" required />
-        </div>
-        <div class="form-group">
-          <textarea id="memDesc" rows="3" placeholder="Explain the reasoning/context behind this code..." required></textarea>
-        </div>
-        <div class="form-group">
-          <label>Memory Type</label>
-          <div class="type-grid">
-            <div class="type-pill active" data-type="decision">🧠 Decision</div>
-            <div class="type-pill" data-type="bug">🐞 Bug</div>
-            <div class="type-pill" data-type="note">📝 Note</div>
-            <div class="type-pill" data-type="feature">🌟 Feature</div>
-          </div>
-        <div class="form-group">
-          <input type="text" id="memTags" placeholder="Tags (e.g. security, perf, refactor)" />
-        </div>
-        
-        <div class="form-group">
-          <label>Linked Code Context</label>
-          <div id="selectionStatus" class="selection-tag">No cursor selection active</div>
-        </div>
+    <button class="main-tab" id="tabNavComments" data-target="commentsSection">
+      <span>⚡ Comments</span>
+    </button>
+  </div>
 
-        <button class="btn-primary" id="saveMemoryBtn">Save Memory</button>
+  <!-- SECTION 1: MEMORIES SECTION -->
+  <div class="section-container active" id="memoriesSection">
+    <!-- Collapsible Form to Record Memory -->
+    <div class="collapsible-container" id="collapsibleFormContainer">
+      <button class="collapsible-trigger" id="formToggleBtn" title="Toggle memory creation form">
+        <span class="trigger-text">➕ Record New Memory</span>
+        <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="collapsible-content" id="formContent">
+        <div class="glass-panel">
+          <div class="form-group">
+            <input type="text" id="memTitle" placeholder="Title (e.g. Why Redis was added)" required />
+          </div>
+          <div class="form-group">
+            <textarea id="memDesc" rows="3" placeholder="Explain the reasoning/context behind this code..." required></textarea>
+          </div>
+          <div class="form-group">
+            <label>Memory Type</label>
+            <div class="type-grid">
+              <div class="type-pill active" data-type="decision">🧠 Decision</div>
+              <div class="type-pill" data-type="bug">🐞 Bug</div>
+              <div class="type-pill" data-type="note">📝 Note</div>
+              <div class="type-pill" data-type="feature">🌟 Feature</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <input type="text" id="memTags" placeholder="Tags (e.g. security, perf, refactor)" />
+          </div>
+          
+          <div class="form-group">
+            <label>Linked Code Context</label>
+            <div id="selectionStatus" class="selection-tag">No cursor selection active</div>
+          </div>
+
+          <button class="btn-primary" id="saveMemoryBtn">Save Memory</button>
+        </div>
       </div>
+    </div>
+
+    <!-- Search and Filtering for Memories -->
+    <div class="search-container">
+      <span class="search-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input type="text" id="searchBar" class="search-input" placeholder="Search memories..." />
+    </div>
+
+    <div class="tabs" id="tabsBar">
+      <div class="tab active" data-filter="all">All <span class="tab-count" id="countAll">0</span></div>
+      <div class="tab" data-filter="decision">Decisions <span class="tab-count" id="countDecision">0</span></div>
+      <div class="tab" data-filter="bug">Bugs <span class="tab-count" id="countBug">0</span></div>
+      <div class="tab" data-filter="note">Notes <span class="tab-count" id="countNote">0</span></div>
+      <div class="tab" data-filter="feature">Features <span class="tab-count" id="countFeature">0</span></div>
+      <div class="tab tab-stale-filter" data-filter="stale">Stale ⚠️ <span class="tab-count" id="countStale">0</span></div>
+    </div>
+
+    <!-- Memories List -->
+    <div class="memories-list" id="memoriesList">
+      <div class="empty-state">Loading memories...</div>
     </div>
   </div>
 
-  <!-- Search and Filtering -->
-  <div class="search-container">
-    <span class="search-icon">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    </span>
-    <input type="text" id="searchBar" class="search-input" placeholder="Search memories..." />
-  </div>
+  <!-- SECTION 2: COMMENTS SECTION -->
+  <div class="section-container" id="commentsSection">
+    <div class="comments-toolbar">
+      <button class="btn-primary" id="scanCommentsBtn" title="Scan workspace for actionable comments">
+        ⚡ Scan Workspace Comments
+      </button>
+    </div>
 
-  <div class="tabs" id="tabsBar">
-    <div class="tab active" data-filter="all">All <span class="tab-count" id="countAll">0</span></div>
-    <div class="tab" data-filter="decision">Decisions <span class="tab-count" id="countDecision">0</span></div>
-    <div class="tab" data-filter="bug">Bugs <span class="tab-count" id="countBug">0</span></div>
-    <div class="tab" data-filter="note">Notes <span class="tab-count" id="countNote">0</span></div>
-    <div class="tab" data-filter="feature">Features <span class="tab-count" id="countFeature">0</span></div>
-    <div class="tab tab-stale-filter" data-filter="stale">Stale ⚠️ <span class="tab-count" id="countStale">0</span></div>
-  </div>
+    <div class="search-container">
+      <span class="search-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input type="text" id="commentsSearchBar" class="search-input" placeholder="Search comments..." />
+    </div>
 
-  <!-- Memories List -->
-  <div class="memories-list" id="memoriesList">
-    <div class="empty-state">Loading memories...</div>
+    <div class="tabs" id="commentTokensBar">
+      <div class="tab active" data-token-filter="ALL">All <span class="tab-count" id="countTokenAll">0</span></div>
+      <div class="tab" data-token-filter="TODO">TODO <span class="tab-count" id="countTokenTODO">0</span></div>
+      <div class="tab" data-token-filter="FIXME">FIXME <span class="tab-count" id="countTokenFIXME">0</span></div>
+      <div class="tab" data-token-filter="BUG">BUG <span class="tab-count" id="countTokenBUG">0</span></div>
+      <div class="tab" data-token-filter="REASON">REASON/MEM <span class="tab-count" id="countTokenREASON">0</span></div>
+      <div class="tab" data-token-filter="NOTE">NOTE/OPT <span class="tab-count" id="countTokenNOTE">0</span></div>
+    </div>
+
+    <div class="comments-list" id="commentsList">
+      <div class="empty-state">Click "Scan Workspace Comments" to inspect actionable code comments.</div>
+    </div>
   </div>
 
   <script src="${scriptUri}"></script>
