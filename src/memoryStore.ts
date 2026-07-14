@@ -109,7 +109,8 @@ export class MemoryStore {
     codeSnippet?: string,
     createdBy = 'Developer',
     symbolName?: string,
-    symbolType?: string
+    symbolType?: string,
+    tags?: string[]
   ): { memory: Memory; link: MemoryLink } | null {
     this.ensureInitialized(); // Re-check if workspace loaded late
     const dbPath = this.getDbPath();
@@ -126,6 +127,7 @@ export class MemoryStore {
       title: title.trim(),
       description: description.trim(),
       type,
+      tags: tags ? tags.map(t => t.trim().toLowerCase()).filter(Boolean) : [],
       created_by: createdBy,
       created_at: new Date().toISOString()
     };
@@ -252,7 +254,7 @@ export class MemoryStore {
   /**
    * Update an existing memory's details.
    */
-  public updateMemory(memoryId: string, title: string, description: string, type: MemoryType): boolean {
+  public updateMemory(memoryId: string, title: string, description: string, type: MemoryType, tags?: string[]): boolean {
     const memory = this.currentDb.memories.find(m => m.id === memoryId);
     if (!memory) {
       return false;
@@ -261,6 +263,9 @@ export class MemoryStore {
     memory.title = title.trim();
     memory.description = description.trim();
     memory.type = type;
+    if (tags !== undefined) {
+      memory.tags = tags.map(t => t.trim().toLowerCase()).filter(Boolean);
+    }
     this.saveDatabase();
     return true;
   }

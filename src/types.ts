@@ -7,6 +7,7 @@ export interface Memory {
   type: MemoryType;
   created_by: string;
   created_at: string;
+  tags?: string[];
 }
 
 export interface MemoryLink {

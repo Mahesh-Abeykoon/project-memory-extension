@@ -9,6 +9,7 @@ let editingMemoryId = null;
 // UI elements
 const memTitleInput = document.getElementById('memTitle');
 const memDescInput = document.getElementById('memDesc');
+const memTagsInput = document.getElementById('memTags');
 const saveBtn = document.getElementById('saveMemoryBtn');
 const selectionStatus = document.getElementById('selectionStatus');
 const memoriesList = document.getElementById('memoriesList');
@@ -62,10 +63,19 @@ refreshSelectionBtn.addEventListener('click', () => {
   vscode.postMessage({ command: 'refreshSelection' });
 });
 
+// Export Markdown Report
+const exportMarkdownBtn = document.getElementById('exportMarkdownBtn');
+if (exportMarkdownBtn) {
+  exportMarkdownBtn.addEventListener('click', () => {
+    vscode.postMessage({ command: 'exportMarkdown' });
+  });
+}
+
 // Save Memory
 saveBtn.addEventListener('click', () => {
   const title = memTitleInput.value.trim();
   const description = memDescInput.value.trim();
+  const tags = memTagsInput ? memTagsInput.value.trim() : '';
 
   if (!title || !description) {
     return; // basic validation
@@ -80,12 +90,14 @@ saveBtn.addEventListener('click', () => {
     command: 'addMemory',
     title,
     description,
-    type: activeType
+    type: activeType,
+    tags
   });
 
   // Clear input fields
   memTitleInput.value = '';
   memDescInput.value = '';
+  if (memTagsInput) memTagsInput.value = '';
 
   // Collapse the form after saving
   formContainer.classList.remove('active');
@@ -114,10 +126,12 @@ memoriesList.addEventListener('click', event => {
     const id = card.getAttribute('data-id');
     const titleInput = card.querySelector('.edit-title-input');
     const descInput = card.querySelector('.edit-desc-input');
+    const tagsInput = card.querySelector('.edit-tags-input');
     const activePill = card.querySelector('.edit-type-grid .type-pill.active');
 
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descInput ? descInput.value.trim() : '';
+    const tags = tagsInput ? tagsInput.value.trim() : '';
     const type = activePill ? activePill.getAttribute('data-type') : 'note';
 
     if (!title || !description) {
@@ -129,7 +143,8 @@ memoriesList.addEventListener('click', event => {
       id,
       title,
       description,
-      type
+      type,
+      tags
     });
 
     editingMemoryId = null;
@@ -290,7 +305,8 @@ function renderMemories() {
       m.title.toLowerCase().includes(query) || 
       m.description.toLowerCase().includes(query) || 
       (m.link && m.link.file_path.toLowerCase().includes(query)) ||
-      (m.link && m.link.symbol_name && m.link.symbol_name.toLowerCase().includes(query));
+      (m.link && m.link.symbol_name && m.link.symbol_name.toLowerCase().includes(query)) ||
+      (m.tags && m.tags.some(t => t.toLowerCase().includes(query)));
       
     return matchesQuery;
   });
@@ -324,6 +340,10 @@ function renderMemories() {
             <div class="form-group">
               <label>Edit Reasoning</label>
               <textarea class="edit-desc-input" rows="3" required>${escapeHtml(m.description)}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Edit Tags</label>
+              <input type="text" class="edit-tags-input" value="${m.tags ? escapeHtml(m.tags.join(', ')) : ''}" placeholder="security, perf..." />
             </div>
             <div class="form-group">
               <label>Memory Type</label>
@@ -365,6 +385,11 @@ function renderMemories() {
           <h4 class="card-title">${escapeHtml(m.title)}</h4>
         </div>
         <div class="card-desc">${escapeHtml(m.description)}</div>
+        ${m.tags && m.tags.length > 0 ? `
+          <div class="card-tags-row">
+            ${m.tags.map(t => `<span class="tag-badge">#${escapeHtml(t)}</span>`).join('')}
+          </div>
+        ` : ''}
         ${m.is_stale ? `
           <div class="card-code-container diff-container">
             <div class="diff-block diff-old">

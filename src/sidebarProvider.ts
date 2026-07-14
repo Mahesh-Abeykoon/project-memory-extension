@@ -57,6 +57,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           // Auto-detect enclosing code symbol (function, class, method)
           const symbolInfo = await getEnclosingSymbol(doc, selection.start);
 
+          // Parse optional tags if sent from webview
+          const tags = Array.isArray(data.tags) ? data.tags : (typeof data.tags === 'string' ? data.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []);
+
           const result = this._memoryStore.addMemory(
             data.title,
             data.description,
@@ -67,7 +70,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             selectedText,
             'Developer',
             symbolInfo?.name,
-            symbolInfo?.kind
+            symbolInfo?.kind,
+            tags
           );
 
           if (result) {
@@ -79,7 +83,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           break;
         }
         case 'updateMemory': {
-          const success = this._memoryStore.updateMemory(data.id, data.title, data.description, data.type as MemoryType);
+          const tags = Array.isArray(data.tags) ? data.tags : (typeof data.tags === 'string' ? data.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : undefined);
+          const success = this._memoryStore.updateMemory(data.id, data.title, data.description, data.type as MemoryType, tags);
           if (success) {
             vscode.window.showInformationMessage(`Memory "${data.title}" updated successfully!`);
             this.sendMemories();
@@ -119,6 +124,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           } else {
             vscode.window.showErrorMessage('Failed to re-sync memory.');
           }
+          break;
+        }
+        case 'exportMarkdown': {
+          vscode.commands.executeCommand('project-memory.exportMarkdown');
           break;
         }
         case 'jumpTo': {
@@ -231,9 +240,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
   <div class="header">
     <h3 class="title">Project Memory</h3>
-    <button class="action-btn" id="refreshSelection" title="Refresh Cursor Selection">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-    </button>
+    <div class="header-actions">
+      <button class="action-btn" id="exportMarkdownBtn" title="Export Memories as Markdown (PR / Docs)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <button class="action-btn" id="refreshSelection" title="Refresh Cursor Selection">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+      </button>
+    </div>
   </div>
 
   <!-- Collapsible Form to Record Memory -->
@@ -258,6 +272,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             <div class="type-pill" data-type="note">📝 Note</div>
             <div class="type-pill" data-type="feature">🌟 Feature</div>
           </div>
+        <div class="form-group">
+          <input type="text" id="memTags" placeholder="Tags (e.g. security, perf, refactor)" />
         </div>
         
         <div class="form-group">

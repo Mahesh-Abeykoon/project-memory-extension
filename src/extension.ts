@@ -4,6 +4,8 @@ import { SidebarProvider } from './sidebarProvider';
 import { MemoryType } from './types';
 import { getEnclosingSymbol } from './symbolHelper';
 
+import { exportMarkdownCommand } from './exportHelper';
+
 // Global decoration types for memory categories
 let decorationTypes: Record<string, vscode.TextEditorDecorationType> = {};
 
@@ -69,6 +71,13 @@ export function activate(context: vscode.ExtensionContext) {
       );
       if (!typeSelection) {return;}
 
+      // Step 4: Get Optional Tags
+      const tagsInput = await vscode.window.showInputBox({
+        prompt: 'Enter tags separated by commas (optional)',
+        placeHolder: 'security, performance, temporary-workaround...'
+      });
+      const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : [];
+
       // Auto-detect enclosing code symbol (function, class, method)
       const symbolInfo = await getEnclosingSymbol(editor.document, selection.start);
 
@@ -83,7 +92,8 @@ export function activate(context: vscode.ExtensionContext) {
         selectedText,
         'Developer',
         symbolInfo?.name,
-        symbolInfo?.kind
+        symbolInfo?.kind,
+        tags
       );
 
       if (result) {
@@ -121,6 +131,13 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('project-memory.focusSidebar', () => {
       vscode.commands.executeCommand('workbench.view.extension.project-memory');
+    })
+  );
+
+  // Command to export memories as Markdown
+  context.subscriptions.push(
+    vscode.commands.registerCommand('project-memory.exportMarkdown', () => {
+      exportMarkdownCommand(memoryStore);
     })
   );
 

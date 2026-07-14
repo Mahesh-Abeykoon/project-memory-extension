@@ -39,6 +39,12 @@ body {
   letter-spacing: 0.5px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Collapsible Form Container styling */
 .collapsible-container {
   margin-bottom: 14px;
@@ -434,6 +440,25 @@ button.btn-primary:hover {
   white-space: pre-line;
   line-height: 1.4;
   color: var(--vscode-sideBar-foreground, var(--vscode-foreground));
+}
+
+.card-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.tag-badge {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(96, 165, 250, 0.1);
+  color: #93c5fd;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  letter-spacing: 0.2px;
 }
 
 .card-code-container {

@@ -44,6 +44,10 @@
             {
                 "command": "project-memory.focusSidebar",
                 "title": "Project Memory: Focus Sidebar"
+            },
+            {
+                "command": "project-memory.exportMarkdown",
+                "title": "Project Memory: Export Memories as Markdown (PR / Docs)"
             }
         ],
         "menus": {
