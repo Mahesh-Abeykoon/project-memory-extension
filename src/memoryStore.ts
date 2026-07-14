@@ -1,7 +1,14 @@
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { Database, Memory, MemoryLink, MemoryType } from './types';
+
+export function computeContentHash(text: string): string {
+  if (!text) {return '';}
+  const normalized = text.replace(/\r\n/g, '\n').trim();
+  return crypto.createHash('sha256').update(normalized).digest('hex').substring(0, 16);
+}
 
 export class MemoryStore {
   private currentDb: Database = { version: "1.0", memories: [], links: [] };
@@ -139,6 +146,7 @@ export class MemoryStore {
       }
     }
 
+    const snippetText = codeSnippet ? codeSnippet.trim() : undefined;
     const link: MemoryLink = {
       memory_id: memoryId,
       file_path: normalizedPath,
@@ -146,7 +154,8 @@ export class MemoryStore {
       symbol_type: symbolType || undefined,
       line_start: lineStart,
       line_end: lineEnd,
-      code_snippet: codeSnippet ? codeSnippet.trim() : undefined,
+      code_snippet: snippetText,
+      content_hash: snippetText ? computeContentHash(snippetText) : undefined,
       context_before: contextBefore || undefined,
       context_after: contextAfter || undefined
     };
@@ -156,6 +165,88 @@ export class MemoryStore {
     this.saveDatabase();
 
     return { memory, link };
+  }
+
+  /**
+   * Validates whether a link's saved content hash matches the code currently on disk.
+   */
+  public checkLinkStaleStatus(link: MemoryLink): { isStale: boolean; reason?: 'modified' | 'file_not_found'; currentSnippet?: string } {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      return { isStale: false };
+    }
+
+    const rootPath = workspaceFolders[0].uri.fsPath;
+    const absolutePath = path.join(rootPath, link.file_path);
+
+    if (!fs.existsSync(absolutePath)) {
+      return { isStale: true, reason: 'file_not_found' };
+    }
+
+    if (!link.content_hash && !link.code_snippet) {
+      return { isStale: false };
+    }
+
+    try {
+      const fileContent = fs.readFileSync(absolutePath, 'utf8');
+      const lines = fileContent.split(/\r?\n/);
+      const startIdx = Math.max(0, link.line_start - 1);
+      const endIdx = Math.min(lines.length, link.line_end);
+
+      if (startIdx >= lines.length) {
+        return { isStale: true, reason: 'modified', currentSnippet: '' };
+      }
+
+      const currentSnippet = lines.slice(startIdx, endIdx).join('\n').trim();
+      const currentHash = computeContentHash(currentSnippet);
+      const targetHash = link.content_hash || (link.code_snippet ? computeContentHash(link.code_snippet) : '');
+
+      if (targetHash && currentHash !== targetHash) {
+        return { isStale: true, reason: 'modified', currentSnippet };
+      }
+    } catch (err) {
+      console.warn('Failed to inspect file for stale memory check:', err);
+    }
+
+    return { isStale: false };
+  }
+
+  /**
+   * Re-syncs a link's saved snippet and content hash with current file contents on disk.
+   */
+  public resyncMemorySnippet(memoryId: string): boolean {
+    const link = this.currentDb.links.find(l => l.memory_id === memoryId);
+    if (!link) {
+      return false;
+    }
+
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      return false;
+    }
+
+    const rootPath = workspaceFolders[0].uri.fsPath;
+    const absolutePath = path.join(rootPath, link.file_path);
+
+    if (!fs.existsSync(absolutePath)) {
+      return false;
+    }
+
+    try {
+      const fileContent = fs.readFileSync(absolutePath, 'utf8');
+      const lines = fileContent.split(/\r?\n/);
+      const startIdx = Math.max(0, link.line_start - 1);
+      const endIdx = Math.min(lines.length, link.line_end);
+
+      const currentSnippet = lines.slice(startIdx, endIdx).join('\n').trim();
+      link.code_snippet = currentSnippet;
+      link.content_hash = computeContentHash(currentSnippet);
+      this.saveDatabase();
+      return true;
+    } catch (err) {
+      console.error('Failed to re-sync memory snippet:', err);
+      return false;
+    }
   }
 
   /**

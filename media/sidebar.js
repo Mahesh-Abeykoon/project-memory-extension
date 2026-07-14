@@ -156,7 +156,20 @@ memoriesList.addEventListener('click', event => {
     return;
   }
 
-  // 5. Copy button click
+  // 5. Re-sync snippet button click
+  const resyncBtn = target.closest('.action-resync');
+  if (resyncBtn) {
+    event.stopPropagation();
+    const card = resyncBtn.closest('.card');
+    const id = card.getAttribute('data-id');
+    vscode.postMessage({
+      command: 'resyncMemory',
+      id
+    });
+    return;
+  }
+
+  // 6. Copy button click
   const copyBtn = target.closest('.action-copy');
   if (copyBtn) {
     event.stopPropagation();
@@ -164,7 +177,7 @@ memoriesList.addEventListener('click', event => {
     return;
   }
 
-  // 6. Delete button click
+  // 7. Delete button click
   const deleteBtn = target.closest('.action-delete');
   if (deleteBtn) {
     event.stopPropagation();
@@ -177,7 +190,7 @@ memoriesList.addEventListener('click', event => {
     return;
   }
 
-  // 7. Card click (jump to code)
+  // 8. Card click (jump to code)
   const card = target.closest('.card');
   if (card && !card.classList.contains('edit-mode-card')) {
     const filePath = card.getAttribute('data-file-path');
@@ -331,8 +344,13 @@ function renderMemories() {
     }
 
     return `
-      <div class="card" data-id="${m.id}" data-type="${m.type}" data-has-link="${!!m.link}" data-file-path="${m.link ? m.link.file_path : ''}" data-line-start="${m.link ? m.link.line_start : 0}" data-line-end="${m.link ? m.link.line_end : 0}" title="${m.link ? 'Click to jump to code' : ''}">
+      <div class="card ${m.is_stale ? 'card-stale' : ''}" data-id="${m.id}" data-type="${m.type}" data-has-link="${!!m.link}" data-file-path="${m.link ? m.link.file_path : ''}" data-line-start="${m.link ? m.link.line_start : 0}" data-line-end="${m.link ? m.link.line_end : 0}" title="${m.link ? 'Click to jump to code' : ''}">
         <div class="card-actions">
+          ${m.is_stale ? `
+            <button class="action-btn action-resync" title="Re-sync code snippet with current file lines">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </button>
+          ` : ''}
           <button class="action-btn action-edit" title="Edit Memory">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
@@ -347,11 +365,28 @@ function renderMemories() {
           <h4 class="card-title">${escapeHtml(m.title)}</h4>
         </div>
         <div class="card-desc">${escapeHtml(m.description)}</div>
-        ${m.link && m.link.code_snippet ? `
+        ${m.is_stale ? `
+          <div class="card-code-container diff-container">
+            <div class="diff-block diff-old">
+              <div class="diff-header-label">- Recorded Code (Original):</div>
+              <pre class="card-code-snippet diff-snippet-old"><code>${m.link && m.link.code_snippet ? escapeHtml(m.link.code_snippet) : '(No original snippet captured)'}</code></pre>
+            </div>
+            ${m.current_snippet !== null && m.current_snippet !== '' ? `
+              <div class="diff-block diff-new">
+                <div class="diff-header-label">+ Current Code (On Disk):</div>
+                <pre class="card-code-snippet diff-snippet-new"><code>${escapeHtml(m.current_snippet)}</code></pre>
+              </div>
+            ` : `
+              <div class="diff-block diff-missing-notice">
+                <div class="diff-header-label">⚠️ Linked file deleted or lines removed on disk</div>
+              </div>
+            `}
+          </div>
+        ` : (m.link && m.link.code_snippet ? `
           <div class="card-code-container">
             <pre class="card-code-snippet"><code>${escapeHtml(m.link.code_snippet)}</code></pre>
           </div>
-        ` : ''}
+        ` : '')}
         <div class="card-meta">
           ${m.link ? `
             <div class="card-link-row">
@@ -372,6 +407,11 @@ function renderMemories() {
               <span class="badge-dot"></span>
               ${m.type}
             </span>
+            ${m.is_stale ? `
+              <span class="stale-badge" title="${m.stale_reason === 'file_not_found' ? 'Linked file not found on disk' : 'Target lines code has been modified'}">
+                ⚠️ ${m.stale_reason === 'file_not_found' ? 'File Missing' : 'Code Modified'}
+              </span>
+            ` : ''}
             <span class="footer-dot">•</span>
             <span title="${absoluteDate}">${relativeDate}</span>
             <span class="footer-dot">•</span>

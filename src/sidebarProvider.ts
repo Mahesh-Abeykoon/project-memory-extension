@@ -110,6 +110,17 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           }
           break;
         }
+        case 'resyncMemory': {
+          const success = this._memoryStore.resyncMemorySnippet(data.id);
+          if (success) {
+            vscode.window.showInformationMessage('Memory snippet re-synced with current code!');
+            this.sendMemories();
+            vscode.commands.executeCommand('project-memory.refreshDecorations');
+          } else {
+            vscode.window.showErrorMessage('Failed to re-sync memory.');
+          }
+          break;
+        }
         case 'jumpTo': {
           const workspaceFolders = vscode.workspace.workspaceFolders;
           if (workspaceFolders && workspaceFolders.length > 0) {
@@ -148,12 +159,20 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     const memories = this._memoryStore.getMemories();
     const links = this._memoryStore.getLinks();
 
-    // Join memories with their links
+    // Join memories with their links and check stale status
     const enrichedMemories = memories.map(memory => {
       const link = links.find(l => l.memory_id === memory.id);
+      let staleInfo = { isStale: false, reason: undefined as 'modified' | 'file_not_found' | undefined, currentSnippet: undefined as string | undefined };
+      if (link) {
+        staleInfo = this._memoryStore.checkLinkStaleStatus(link);
+      }
+
       return {
         ...memory,
-        link: link || null
+        link: link || null,
+        is_stale: staleInfo.isStale,
+        stale_reason: staleInfo.reason || null,
+        current_snippet: staleInfo.currentSnippet !== undefined ? staleInfo.currentSnippet : null
       };
     });
 

@@ -460,6 +460,70 @@ button.btn-primary:hover {
   font-family: inherit;
 }
 
+/* Diff Comparison Container & Elements */
+.diff-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: transparent !important;
+  border: none !important;
+}
+
+.diff-block {
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid transparent;
+}
+
+.diff-header-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 3px 6px;
+  text-transform: uppercase;
+}
+
+.diff-old {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.diff-old .diff-header-label {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.diff-snippet-old {
+  color: #fca5a5;
+  background: transparent;
+}
+
+.diff-new {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.diff-new .diff-header-label {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.diff-snippet-new {
+  color: #6ee7b7;
+  background: transparent;
+}
+
+.diff-missing-notice {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.25);
+  padding: 6px;
+}
+
+.diff-missing-notice .diff-header-label {
+  color: #fbbf24;
+  padding: 0;
+}
+
 .card-meta {
   display: flex;
   flex-direction: column;
@@ -557,6 +621,17 @@ button.btn-primary:hover {
   opacity: 1;
 }
 
+.action-resync {
+  color: #fbbf24;
+  opacity: 0.85;
+}
+
+.action-resync:hover {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  opacity: 1;
+}
+
 .action-edit:hover {
   color: #a78bfa;
   background: rgba(167, 139, 250, 0.1);
@@ -565,6 +640,25 @@ button.btn-primary:hover {
 .action-delete:hover {
   color: #f87171;
   background: rgba(248, 113, 113, 0.1);
+}
+
+.stale-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.card-stale {
+  border-color: rgba(245, 158, 11, 0.25) !important;
 }
 
 /* Edit Mode Card */
