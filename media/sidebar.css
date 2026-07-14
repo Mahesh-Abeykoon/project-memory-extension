@@ -278,6 +278,30 @@ button.btn-primary:hover {
   background: rgba(255, 255, 255, 0.02);
 }
 
+.tab-count {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--vscode-foreground);
+  margin-left: 3px;
+  opacity: 0.85;
+}
+
+.tab.active .tab-count {
+  background: var(--vscode-focusBorder, rgba(0, 122, 204, 0.3));
+  opacity: 1;
+}
+
+.tab-stale-filter {
+  color: #fbbf24 !important;
+}
+
+.tab-stale-filter.active {
+  border-bottom-color: #f59e0b !important;
+}
+
 /* Memory Cards */
 .memories-list {
   display: flex;
@@ -348,13 +372,29 @@ button.btn-primary:hover {
   margin-bottom: 6px;
 }
 
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+  padding-right: 48px; /* Room for action buttons */
+}
+
 .card-title {
   font-weight: 600;
   font-size: 12.5px;
   margin: 0;
-  padding-right: 48px; /* Room for action buttons */
   line-height: 1.35;
   color: var(--vscode-editor-foreground, var(--vscode-foreground));
+}
+
+.card-location-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .card-footer-row {

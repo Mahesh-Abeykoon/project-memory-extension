@@ -157,6 +157,24 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     // Listen to changes in the active editor selection to dynamically update UI form context
     vscode.window.onDidChangeActiveTextEditor(() => this.sendActiveSelection());
     vscode.window.onDidChangeTextEditorSelection(() => this.sendActiveSelection());
+
+    // Listen to document content changes & saves to update stale checks and live diffs in real-time
+    let debouncedTimer: NodeJS.Timeout | undefined;
+    vscode.workspace.onDidChangeTextDocument(e => {
+      if (e.document.uri.scheme !== 'file') {return;}
+      if (debouncedTimer) {clearTimeout(debouncedTimer);}
+      debouncedTimer = setTimeout(() => {
+        this.sendMemories();
+        vscode.commands.executeCommand('project-memory.refreshDecorations');
+      }, 400);
+    });
+
+    vscode.workspace.onDidSaveTextDocument(doc => {
+      if (doc.uri.scheme === 'file') {
+        this.sendMemories();
+        vscode.commands.executeCommand('project-memory.refreshDecorations');
+      }
+    });
   }
 
   /**
@@ -294,12 +312,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     <input type="text" id="searchBar" class="search-input" placeholder="Search memories..." />
   </div>
 
-  <div class="tabs">
-    <div class="tab active" data-filter="all">All</div>
-    <div class="tab" data-filter="decision">Decisions</div>
-    <div class="tab" data-filter="bug">Bugs</div>
-    <div class="tab" data-filter="note">Notes</div>
-    <div class="tab" data-filter="feature">Features</div>
+  <div class="tabs" id="tabsBar">
+    <div class="tab active" data-filter="all">All <span class="tab-count" id="countAll">0</span></div>
+    <div class="tab" data-filter="decision">Decisions <span class="tab-count" id="countDecision">0</span></div>
+    <div class="tab" data-filter="bug">Bugs <span class="tab-count" id="countBug">0</span></div>
+    <div class="tab" data-filter="note">Notes <span class="tab-count" id="countNote">0</span></div>
+    <div class="tab" data-filter="feature">Features <span class="tab-count" id="countFeature">0</span></div>
+    <div class="tab tab-stale-filter" data-filter="stale">Stale ⚠️ <span class="tab-count" id="countStale">0</span></div>
   </div>
 
   <!-- Memories List -->
