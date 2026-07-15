@@ -60,10 +60,10 @@ tabNavComments.addEventListener('click', () => {
 formToggleBtn.addEventListener('click', () => {
   formContainer.classList.toggle('active');
   if (formContainer.classList.contains('active')) {
-    triggerText.textContent = '➖ Hide Record Form';
+    triggerText.textContent = 'Hide Record Form';
     setTimeout(() => memTitleInput.focus(), 150);
   } else {
-    triggerText.textContent = '➕ Record New Memory';
+    triggerText.textContent = 'Record New Memory';
   }
 });
 
@@ -154,7 +154,7 @@ saveBtn.addEventListener('click', () => {
 
   // Collapse the form after saving
   formContainer.classList.remove('active');
-  triggerText.textContent = '➕ Record New Memory';
+  triggerText.textContent = 'Record New Memory';
 });
 
 // Handle click delegation on memories list
@@ -466,10 +466,10 @@ function renderMemories() {
             <div class="form-group">
               <label>Memory Type</label>
               <div class="type-grid edit-type-grid">
-                <div class="type-pill ${m.type === 'decision' ? 'active' : ''}" data-type="decision">🧠 Decision</div>
-                <div class="type-pill ${m.type === 'bug' ? 'active' : ''}" data-type="bug">🐞 Bug</div>
-                <div class="type-pill ${m.type === 'note' ? 'active' : ''}" data-type="note">📝 Note</div>
-                <div class="type-pill ${m.type === 'feature' ? 'active' : ''}" data-type="feature">🌟 Feature</div>
+                <div class="type-pill ${m.type === 'decision' ? 'active' : ''}" data-type="decision"><span class="pill-dot dot-decision"></span>Decision</div>
+                <div class="type-pill ${m.type === 'bug' ? 'active' : ''}" data-type="bug"><span class="pill-dot dot-bug"></span>Bug</div>
+                <div class="type-pill ${m.type === 'note' ? 'active' : ''}" data-type="note"><span class="pill-dot dot-note"></span>Note</div>
+                <div class="type-pill ${m.type === 'feature' ? 'active' : ''}" data-type="feature"><span class="pill-dot dot-feature"></span>Feature</div>
               </div>
             </div>
             <div class="edit-actions-row">
@@ -523,7 +523,7 @@ function renderMemories() {
             ` : ''}
             ${m.is_stale ? `
               <span class="stale-badge" title="${m.stale_reason === 'file_not_found' ? 'Linked file not found on disk' : 'Target lines code has been modified'}">
-                ⚠️ ${m.stale_reason === 'file_not_found' ? 'File Missing' : 'Code Modified'}
+                ${m.stale_reason === 'file_not_found' ? 'File Missing' : 'Code Modified'}
               </span>
             ` : ''}
           </div>
@@ -548,7 +548,7 @@ function renderMemories() {
               </div>
             ` : `
               <div class="diff-block diff-missing-notice">
-                <div class="diff-header-label">⚠️ Linked file deleted or lines removed on disk</div>
+                <div class="diff-header-label">Linked file deleted or lines removed on disk</div>
               </div>
             `}
           </div>
@@ -657,7 +657,7 @@ function renderComments() {
             <div class="comment-body-text">${escapeHtml(c.body || c.text)}</div>
             <div class="comment-card-actions">
               <button class="btn-convert-memory action-convert-comment" title="Promote comment into a permanent Project Memory">
-                🧠 Convert to Memory
+                Convert to Memory
               </button>
             </div>
           </div>

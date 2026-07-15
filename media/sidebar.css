@@ -30,13 +30,13 @@ body {
 }
 
 .title {
-  font-size: 15px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #c084fc 0%, #60a5fa 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--vscode-sideBarTitle-foreground, var(--vscode-foreground));
   margin: 0;
-  letter-spacing: 0.5px;
+  letter-spacing: 1.2px;
+  opacity: 0.85;
 }
 
 .header-actions {
@@ -175,23 +175,19 @@ input:focus, textarea:focus, select:focus {
 
 .type-pill.active[data-type="decision"] {
   border-color: var(--border-decision);
-  background: var(--glow-decision);
-  box-shadow: 0 0 8px var(--glow-decision);
+  background: rgba(167, 139, 250, 0.08);
 }
 .type-pill.active[data-type="bug"] {
   border-color: var(--border-bug);
-  background: var(--glow-bug);
-  box-shadow: 0 0 8px var(--glow-bug);
+  background: rgba(248, 113, 113, 0.08);
 }
 .type-pill.active[data-type="note"] {
   border-color: var(--border-note);
-  background: var(--glow-note);
-  box-shadow: 0 0 8px var(--glow-note);
+  background: rgba(96, 165, 250, 0.08);
 }
 .type-pill.active[data-type="feature"] {
   border-color: var(--border-feature);
-  background: var(--glow-feature);
-  box-shadow: 0 0 8px var(--glow-feature);
+  background: rgba(52, 211, 153, 0.08);
 }
 
 .selection-tag {
@@ -313,7 +309,7 @@ button.btn-primary:hover {
 .card {
   position: relative;
   background: var(--vscode-editor-background, rgba(0, 0, 0, 0.15));
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 12px;
   border: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.05));
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
@@ -330,39 +326,37 @@ button.btn-primary:hover {
   border-color: rgba(255, 255, 255, 0.12);
 }
 
-.card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  transition: width 0.2s ease;
-}
-
 /* Color scheme based on type */
-.card[data-type="decision"]::before { background-color: #a78bfa; }
-.card[data-type="decision"]:hover { 
+.card[data-type="decision"] {
+  border-left: 2px solid #a78bfa;
+}
+.card[data-type="decision"]:hover {
   border-color: var(--border-decision);
-  box-shadow: 0 4px 12px var(--glow-decision);
+  border-left-color: #a78bfa;
 }
 
-.card[data-type="bug"]::before { background-color: #f87171; }
-.card[data-type="bug"]:hover { 
+.card[data-type="bug"] {
+  border-left: 2px solid #f87171;
+}
+.card[data-type="bug"]:hover {
   border-color: var(--border-bug);
-  box-shadow: 0 4px 12px var(--glow-bug);
+  border-left-color: #f87171;
 }
 
-.card[data-type="note"]::before { background-color: #60a5fa; }
-.card[data-type="note"]:hover { 
+.card[data-type="note"] {
+  border-left: 2px solid #60a5fa;
+}
+.card[data-type="note"]:hover {
   border-color: var(--border-note);
-  box-shadow: 0 4px 12px var(--glow-note);
+  border-left-color: #60a5fa;
 }
 
-.card[data-type="feature"]::before { background-color: #34d399; }
-.card[data-type="feature"]:hover { 
+.card[data-type="feature"] {
+  border-left: 2px solid #34d399;
+}
+.card[data-type="feature"]:hover {
   border-color: var(--border-feature);
-  box-shadow: 0 4px 12px var(--glow-feature);
+  border-left-color: #34d399;
 }
 
 .card-header {
@@ -776,12 +770,12 @@ button.btn-secondary:hover {
 /* Main View Section Tabs */
 .main-view-tabs {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   margin-bottom: 12px;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 3px;
-  border-radius: 6px;
-  border: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.08));
+  background: rgba(0, 0, 0, 0.15);
+  padding: 2px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.06));
 }
 
 .main-tab {
@@ -790,28 +784,28 @@ button.btn-secondary:hover {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 5px 8px;
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: 3px;
   color: var(--vscode-sideBar-foreground, var(--vscode-foreground));
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 500;
   cursor: pointer;
-  opacity: 0.65;
-  transition: all 0.2s ease;
+  opacity: 0.7;
+  transition: all 0.15s ease;
 }
 
 .main-tab:hover {
   opacity: 0.95;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .main-tab.active {
   opacity: 1;
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: none;
 }
 
 /* Section Containers */
@@ -1002,4 +996,26 @@ button.btn-secondary:hover {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.18);
 }
+
+/* Type pill dot styling */
+.pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+.dot-decision {
+  background-color: #a78bfa;
+}
+.dot-bug {
+  background-color: #f87171;
+}
+.dot-note {
+  background-color: #60a5fa;
+}
+.dot-feature {
+  background-color: #34d399;
+}
+
 

@@ -261,7 +261,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     );
 
     if (result) {
-      vscode.window.showInformationMessage(`🧠 Comment promoted to Project Memory: "${title}"!`);
+      vscode.window.showInformationMessage(`Comment promoted to Project Memory: "${title}"!`);
       this.sendMemories();
       await this.sendScannedComments();
       vscode.commands.executeCommand('project-memory.refreshDecorations');
@@ -362,10 +362,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   <!-- Main View Navigation Tabs -->
   <div class="main-view-tabs">
     <button class="main-tab active" id="tabNavMemories" data-target="memoriesSection">
-      <span>🧠 Memories</span>
+      <svg class="tab-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span>Memories</span>
     </button>
     <button class="main-tab" id="tabNavComments" data-target="commentsSection">
-      <span>⚡ Comments</span>
+      <svg class="tab-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>Comments</span>
     </button>
   </div>
 
@@ -374,7 +376,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     <!-- Collapsible Form to Record Memory -->
     <div class="collapsible-container" id="collapsibleFormContainer">
       <button class="collapsible-trigger" id="formToggleBtn" title="Toggle memory creation form">
-        <span class="trigger-text">➕ Record New Memory</span>
+        <svg class="trigger-add-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span class="trigger-text">Record New Memory</span>
         <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div class="collapsible-content" id="formContent">
@@ -388,10 +391,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           <div class="form-group">
             <label>Memory Type</label>
             <div class="type-grid">
-              <div class="type-pill active" data-type="decision">🧠 Decision</div>
-              <div class="type-pill" data-type="bug">🐞 Bug</div>
-              <div class="type-pill" data-type="note">📝 Note</div>
-              <div class="type-pill" data-type="feature">🌟 Feature</div>
+              <div class="type-pill active" data-type="decision">Decision</div>
+              <div class="type-pill" data-type="bug">Bug</div>
+              <div class="type-pill" data-type="note">Note</div>
+              <div class="type-pill" data-type="feature">Feature</div>
             </div>
           </div>
           <div class="form-group">
@@ -422,7 +425,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       <div class="tab" data-filter="bug">Bugs <span class="tab-count" id="countBug">0</span></div>
       <div class="tab" data-filter="note">Notes <span class="tab-count" id="countNote">0</span></div>
       <div class="tab" data-filter="feature">Features <span class="tab-count" id="countFeature">0</span></div>
-      <div class="tab tab-stale-filter" data-filter="stale">Stale ⚠️ <span class="tab-count" id="countStale">0</span></div>
+      <div class="tab tab-stale-filter" data-filter="stale">Stale <span class="tab-count" id="countStale">0</span></div>
     </div>
 
     <!-- Memories List -->
@@ -435,7 +438,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   <div class="section-container" id="commentsSection">
     <div class="comments-toolbar">
       <button class="btn-primary" id="scanCommentsBtn" title="Scan workspace for actionable comments">
-        ⚡ Scan Workspace Comments
+        Scan Workspace Comments
       </button>
     </div>
 
