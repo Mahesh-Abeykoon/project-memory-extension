@@ -203,7 +203,7 @@ function initializeDecorationTypes() {
       overviewRulerColor: 'rgba(138, 43, 226, 0.7)',
       overviewRulerLane: vscode.OverviewRulerLane.Right,
       after: {
-        contentText: '  🧠 [Decision]',
+        contentText: '  [Decision]',
         color: 'rgba(138, 43, 226, 0.55)',
         fontStyle: 'italic',
         margin: '0 0 0 1em'
@@ -215,7 +215,7 @@ function initializeDecorationTypes() {
       overviewRulerColor: 'rgba(220, 38, 38, 0.7)',
       overviewRulerLane: vscode.OverviewRulerLane.Right,
       after: {
-        contentText: '  🐞 [Bug]',
+        contentText: '  [Bug]',
         color: 'rgba(220, 38, 38, 0.55)',
         fontStyle: 'italic',
         margin: '0 0 0 1em'
@@ -227,7 +227,7 @@ function initializeDecorationTypes() {
       overviewRulerColor: 'rgba(59, 130, 246, 0.7)',
       overviewRulerLane: vscode.OverviewRulerLane.Right,
       after: {
-        contentText: '  📝 [Note]',
+        contentText: '  [Note]',
         color: 'rgba(59, 130, 246, 0.55)',
         fontStyle: 'italic',
         margin: '0 0 0 1em'
@@ -239,7 +239,7 @@ function initializeDecorationTypes() {
       overviewRulerColor: 'rgba(16, 185, 129, 0.7)',
       overviewRulerLane: vscode.OverviewRulerLane.Right,
       after: {
-        contentText: '  🌟 [Feature]',
+        contentText: '  [Feature]',
         color: 'rgba(16, 185, 129, 0.55)',
         fontStyle: 'italic',
         margin: '0 0 0 1em'
@@ -278,12 +278,7 @@ function updateDecorations(editor: vscode.TextEditor, memoryStore: MemoryStore) 
     const type = memory.type as string;
     if (decorationRanges[type]) {
       decorationRanges[type].push({
-        range,
-        hoverMessage: new vscode.MarkdownString(
-          `### 🧠 Project Memory: **${memory.title}** [_${memory.type.toUpperCase()}_]\n\n` +
-          `> ${memory.description}\n\n` +
-          `*Created by **${memory.created_by}** on ${new Date(memory.created_at).toLocaleDateString()}*`
-        )
+        range
       });
     }
   }
@@ -323,7 +318,7 @@ class MemoryCodeLensProvider implements vscode.CodeLensProvider {
       const range = new vscode.Range(lineIdx, 0, lineIdx, 999);
 
       const codeLens = new vscode.CodeLens(range, {
-        title: `🧠 Memory: ${memory.title} (${memory.type})`,
+        title: `Memory: ${memory.title} (${memory.type})`,
         command: 'project-memory.focusSidebar',
       });
       lenses.push(codeLens);
@@ -347,37 +342,45 @@ class MemoryHoverProvider implements vscode.HoverProvider {
     const filePath = document.fileName;
     const links = this.memoryStore.getLinksForFile(filePath);
 
-    // Find if hover cursor is within any memory links
-    const targetLink = links.find(link => {
+    // Find all links that cover the current line
+    const matchingLinks = links.filter(link => {
       const start = link.line_start - 1;
       const end = link.line_end - 1;
       return position.line >= start && position.line <= end;
     });
 
-    if (!targetLink) {
+    if (matchingLinks.length === 0) {
       return null;
     }
 
-    const memory = this.memoryStore.getMemoryById(targetLink.memory_id);
-    if (!memory) {
-      return null;
+    // Deduplicate matching links by memory_id
+    const seenMemories = new Set<string>();
+    const uniqueLinks: any[] = [];
+    for (const link of matchingLinks) {
+      if (!seenMemories.has(link.memory_id)) {
+        seenMemories.add(link.memory_id);
+        uniqueLinks.push(link);
+      }
     }
-
-    const typeEmoji: Record<string, string> = {
-      decision: '🧠',
-      bug: '🐞',
-      note: '📝',
-      feature: '🌟'
-    };
-
-    const emoji = typeEmoji[memory.type] || '📝';
 
     const hoverMarkdown = new vscode.MarkdownString();
     hoverMarkdown.isTrusted = true;
-    hoverMarkdown.appendMarkdown(`### ${emoji} Project Memory: **${memory.title}**\n\n`);
-    hoverMarkdown.appendMarkdown(`**Category:** \`${memory.type.toUpperCase()}\`  \n`);
-    hoverMarkdown.appendMarkdown(`**Reasoning:**  \n${memory.description}  \n\n`);
-    hoverMarkdown.appendMarkdown(`*Recorded on ${new Date(memory.created_at).toLocaleDateString()} by ${memory.created_by}*`);
+
+    for (let i = 0; i < uniqueLinks.length; i++) {
+      const link = uniqueLinks[i];
+      const memory = this.memoryStore.getMemoryById(link.memory_id);
+      if (!memory) {continue;}
+
+      if (i > 0) {
+        hoverMarkdown.appendMarkdown('\n\n---\n\n');
+      }
+
+      hoverMarkdown.appendMarkdown(`### Project Memory: **${memory.title}**\n`);
+      hoverMarkdown.appendMarkdown(`_${memory.type.toUpperCase()}_\n\n`);
+      hoverMarkdown.appendMarkdown(`${memory.description}\n\n`);
+      hoverMarkdown.appendMarkdown(`---\n`);
+      hoverMarkdown.appendMarkdown(`*Recorded on ${new Date(memory.created_at).toLocaleDateString()} by ${memory.created_by}*`);
+    }
 
     return new vscode.Hover(hoverMarkdown);
   }
