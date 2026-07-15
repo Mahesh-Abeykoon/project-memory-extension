@@ -185,14 +185,6 @@ export function activate(context: vscode.ExtensionContext) {
       new MemoryCodeLensProvider(memoryStore)
     )
   );
-
-  // Register Hover Provider
-  context.subscriptions.push(
-    vscode.languages.registerHoverProvider(
-      { scheme: 'file' },
-      new MemoryHoverProvider(memoryStore)
-    )
-  );
 }
 
 function initializeDecorationTypes() {
@@ -266,7 +258,6 @@ function updateDecorations(editor: vscode.TextEditor, memoryStore: MemoryStore) 
     if (!memory) {continue;}
 
     const docLineCount = editor.document.lineCount;
-    // Bounds checking
     const lineStart = Math.min(docLineCount, Math.max(1, link.line_start)) - 1;
     const lineEnd = Math.min(docLineCount, Math.max(1, link.line_end)) - 1;
 
@@ -275,11 +266,18 @@ function updateDecorations(editor: vscode.TextEditor, memoryStore: MemoryStore) 
       new vscode.Position(lineEnd, 999)
     );
 
+    // Build hover markdown scoped to this decoration range (prevents duplicate provider calls)
+    const hover = new vscode.MarkdownString();
+    hover.isTrusted = true;
+    hover.appendMarkdown(`### Project Memory: **${memory.title}**\n`);
+    hover.appendMarkdown(`_${memory.type.toUpperCase()}_\n\n`);
+    hover.appendMarkdown(`${memory.description}\n\n`);
+    hover.appendMarkdown(`---\n`);
+    hover.appendMarkdown(`*Recorded on ${new Date(memory.created_at).toLocaleDateString()} by ${memory.created_by}*`);
+
     const type = memory.type as string;
     if (decorationRanges[type]) {
-      decorationRanges[type].push({
-        range
-      });
+      decorationRanges[type].push({ range, hoverMessage: hover });
     }
   }
 
@@ -296,98 +294,7 @@ function triggerUpdateDecorations(memoryStore: MemoryStore) {
   }
 }
 
-/**
- * CodeLens Provider to show indicators above memory-linked ranges.
- */
-class MemoryCodeLensProvider implements vscode.CodeLensProvider {
-  constructor(private readonly memoryStore: MemoryStore) {}
-
-  public provideCodeLenses(
-    document: vscode.TextDocument,
-    _token: vscode.CancellationToken
-  ): vscode.CodeLens[] {
-    const lenses: vscode.CodeLens[] = [];
-    const filePath = document.fileName;
-    const links = this.memoryStore.getLinksForFile(filePath);
-
-    for (const link of links) {
-      const memory = this.memoryStore.getMemoryById(link.memory_id);
-      if (!memory) {continue;}
-
-      const lineIdx = Math.min(document.lineCount - 1, Math.max(1, link.line_start) - 1);
-      const range = new vscode.Range(lineIdx, 0, lineIdx, 999);
-
-      const codeLens = new vscode.CodeLens(range, {
-        title: `Memory: ${memory.title} (${memory.type})`,
-        command: 'project-memory.focusSidebar',
-      });
-      lenses.push(codeLens);
-    }
-
-    return lenses;
-  }
-}
-
-/**
- * Hover Provider to show quick details when hovering over annotated text.
- */
-class MemoryHoverProvider implements vscode.HoverProvider {
-  constructor(private readonly memoryStore: MemoryStore) {}
-
-  public provideHover(
-    document: vscode.TextDocument,
-    position: vscode.Position,
-    _token: vscode.CancellationToken
-  ): vscode.ProviderResult<vscode.Hover> {
-    const filePath = document.fileName;
-    const links = this.memoryStore.getLinksForFile(filePath);
-
-    // Find all links that cover the current line
-    const matchingLinks = links.filter(link => {
-      const start = link.line_start - 1;
-      const end = link.line_end - 1;
-      return position.line >= start && position.line <= end;
-    });
-
-    if (matchingLinks.length === 0) {
-      return null;
-    }
-
-    // Deduplicate matching links by memory_id
-    const seenMemories = new Set<string>();
-    const uniqueLinks: any[] = [];
-    for (const link of matchingLinks) {
-      if (!seenMemories.has(link.memory_id)) {
-        seenMemories.add(link.memory_id);
-        uniqueLinks.push(link);
-      }
-    }
-
-    const hoverMarkdown = new vscode.MarkdownString();
-    hoverMarkdown.isTrusted = true;
-
-    for (let i = 0; i < uniqueLinks.length; i++) {
-      const link = uniqueLinks[i];
-      const memory = this.memoryStore.getMemoryById(link.memory_id);
-      if (!memory) {continue;}
-
-      if (i > 0) {
-        hoverMarkdown.appendMarkdown('\n\n---\n\n');
-      }
-
-      hoverMarkdown.appendMarkdown(`### Project Memory: **${memory.title}**\n`);
-      hoverMarkdown.appendMarkdown(`_${memory.type.toUpperCase()}_\n\n`);
-      hoverMarkdown.appendMarkdown(`${memory.description}\n\n`);
-      hoverMarkdown.appendMarkdown(`---\n`);
-      hoverMarkdown.appendMarkdown(`*Recorded on ${new Date(memory.created_at).toLocaleDateString()} by ${memory.created_by}*`);
-    }
-
-    return new vscode.Hover(hoverMarkdown);
-  }
-}
-
 export function deactivate() {
-  // Clear all decoration styles
   Object.values(decorationTypes).forEach(dec => dec.dispose());
   commentHighlighter?.dispose();
 }
