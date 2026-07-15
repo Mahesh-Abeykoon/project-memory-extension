@@ -2,7 +2,7 @@
     "name": "project-memory",
     "displayName": "Project Memory",
     "description": "Capture the WHY behind your codebase.",
-    "publisher": "Mahesh Abeykoon",
+    "publisher": "mahesh-abeykoon",
     "version": "1.7.0",
     "engines": {
         "vscode": "^1.75.0"
