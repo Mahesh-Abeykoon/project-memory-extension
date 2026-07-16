@@ -67,6 +67,16 @@
                     "when": "editorHasSelection"
                 }
             ]
+        },
+        "configuration": {
+            "title": "Project Memory",
+            "properties": {
+                "project-memory.authorName": {
+                    "type": "string",
+                    "default": "",
+                    "description": "The author name to use when saving memories. If left empty, it will auto-detect your Git username or system username."
+                }
+            }
         }
     },
     "scripts": {

@@ -5,6 +5,7 @@ import { MemoryType } from './types';
 import { getEnclosingSymbol } from './symbolHelper';
 import { exportMarkdownCommand } from './exportHelper';
 import { CommentHighlighter } from './commentHighlighter';
+import { resolveAuthorName } from './authorHelper';
 
 // Global decoration types for memory categories
 let decorationTypes: Record<string, vscode.TextEditorDecorationType> = {};
@@ -97,7 +98,7 @@ export function activate(context: vscode.ExtensionContext) {
         lineStart,
         lineEnd,
         selectedText,
-        'Developer',
+        resolveAuthorName(),
         symbolInfo?.name,
         symbolInfo?.kind,
         tags

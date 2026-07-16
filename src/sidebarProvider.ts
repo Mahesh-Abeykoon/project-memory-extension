@@ -4,6 +4,7 @@ import { MemoryStore } from './memoryStore';
 import { MemoryType } from './types';
 import { getEnclosingSymbol } from './symbolHelper';
 import { CommentScanner } from './commentScanner';
+import { resolveAuthorName } from './authorHelper';
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'project-memory.sidebar';
@@ -254,7 +255,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       data.line,
       data.line,
       data.text,
-      'Developer (Promoted)',
+      `${resolveAuthorName()} (Promoted)`,
       symbolInfo?.name,
       symbolInfo?.kind,
       tags
