@@ -178,13 +178,6 @@ export function activate(context: vscode.ExtensionContext) {
     commentHighlighter.updateEditor(vscode.window.activeTextEditor);
   }
 
-  // Register CodeLens Provider
-  context.subscriptions.push(
-    vscode.languages.registerCodeLensProvider(
-      { scheme: 'file' },
-      new MemoryCodeLensProvider(memoryStore)
-    )
-  );
 }
 
 function initializeDecorationTypes() {

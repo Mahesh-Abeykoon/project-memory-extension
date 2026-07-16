@@ -280,7 +280,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     // Join memories with their links and check stale status
     const enrichedMemories = memories.map(memory => {
       const link = links.find(l => l.memory_id === memory.id);
-      let staleInfo = { isStale: false, reason: undefined as 'modified' | 'file_not_found' | undefined, currentSnippet: undefined as string | undefined };
+      let staleInfo: { isStale: boolean; reason?: 'modified' | 'file_not_found'; currentSnippet?: string } = { isStale: false };
       if (link) {
         staleInfo = this._memoryStore.checkLinkStaleStatus(link);
       }

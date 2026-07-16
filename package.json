@@ -4,6 +4,11 @@
     "description": "Capture the WHY behind your codebase.",
     "publisher": "mahesh-abeykoon",
     "version": "1.7.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Mahesh-Abeykoon/project-memory-extension"
+    },
+    "license": "MIT",
     "engines": {
         "vscode": "^1.75.0"
     },
