@@ -7,6 +7,7 @@ export interface Memory {
   type: MemoryType;
   created_by: string;
   created_at: string;
+  tags?: string[];
 }
 
 export interface MemoryLink {
@@ -16,6 +17,7 @@ export interface MemoryLink {
   symbol_type?: string;    // e.g., "function", "class"
   line_start: number;      // 1-indexed line start
   line_end: number;        // 1-indexed line end
+  code_snippet?: string;   // Captured snippet at creation time
   content_hash?: string;   // Hash of lines for drift check
   context_before?: string; // Preceding lines for validation
   context_after?: string;  // Succeeding lines for validation

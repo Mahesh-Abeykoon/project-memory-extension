@@ -1,9 +1,24 @@
 {
-    "name": "project-memory",
-    "displayName": "Project Memory",
-    "description": "Capture the WHY behind your codebase.",
-    "publisher": "Mahesh Abeykoon",
-    "version": "1.7.0",
+    "name": "comments-highlighter",
+    "displayName": "Project Memory - Code Context & Annotations",
+    "description": "Capture the WHY behind your codebase. Link architectural decisions, bug workarounds, and notes directly to code lines.",
+    "publisher": "mahesh-abeykoon",
+    "version": "0.2.2",
+    "icon": "media/logo.png",
+    "keywords": [
+        "documentation",
+        "code-context",
+        "notes",
+        "annotations",
+        "todo-scanner",
+        "knowledge-base",
+        "reasoning"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Mahesh-Abeykoon/project-memory-extension"
+    },
+    "license": "MIT",
     "engines": {
         "vscode": "^1.75.0"
     },
@@ -18,7 +33,7 @@
                 {
                     "id": "project-memory",
                     "title": "Project Memory",
-                    "icon": "media/brain.svg"
+                    "icon": "media/project-memory.svg"
                 }
             ]
         },
@@ -28,14 +43,14 @@
                     "type": "webview",
                     "id": "project-memory.sidebar",
                     "name": "Memories",
-                    "icon": "media/brain.svg"
+                    "icon": "media/project-memory.svg"
                 }
             ]
         },
         "commands": [
             {
                 "command": "project-memory.addMemory",
-                "title": "Project Memory: Add Memory at Cursor"
+                "title": "🧠 Add to Project Memory"
             },
             {
                 "command": "project-memory.clearAll",
@@ -44,6 +59,14 @@
             {
                 "command": "project-memory.focusSidebar",
                 "title": "Project Memory: Focus Sidebar"
+            },
+            {
+                "command": "project-memory.exportMarkdown",
+                "title": "Project Memory: Export Memories as Markdown (PR / Docs)"
+            },
+            {
+                "command": "project-memory.scanComments",
+                "title": "Project Memory: Scan Workspace Comments"
             }
         ],
         "menus": {
@@ -54,6 +77,16 @@
                     "when": "editorHasSelection"
                 }
             ]
+        },
+        "configuration": {
+            "title": "Project Memory",
+            "properties": {
+                "project-memory.authorName": {
+                    "type": "string",
+                    "default": "",
+                    "description": "The author name to use when saving memories. If left empty, it will auto-detect your Git username or system username."
+                }
+            }
         }
     },
     "scripts": {
