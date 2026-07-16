@@ -18,7 +18,7 @@ export interface FileCommentGroup {
 }
 
 export class CommentScanner {
-  private static readonly EXCLUDE_GLOB = '**/{node_modules,.git,dist,build,out,coverage,.vscode,*.vsix,*.log}/**';
+  private static readonly EXCLUDE_GLOB = '**/{node_modules,.git,.memory,dist,build,out,coverage,.vscode,*.vsix,*.log}/**';
   private static readonly SUPPORTED_TOKENS = ['TODO', 'FIXME', 'BUG', 'REASON', 'MEMORY', 'NOTE', 'OPTIMIZE'];
 
   /**

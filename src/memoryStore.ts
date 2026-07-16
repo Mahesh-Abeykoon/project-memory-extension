@@ -170,7 +170,8 @@ export class MemoryStore {
   }
 
   /**
-   * Validates whether a link's saved content hash matches the code currently on disk.
+   * Validates whether a link's saved content hash matches the code currently on disk or open in memory.
+   * Auto-aligns line numbers if the snippet shifted within the file.
    */
   public checkLinkStaleStatus(link: MemoryLink): { isStale: boolean; reason?: 'modified' | 'file_not_found'; currentSnippet?: string } {
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -181,7 +182,13 @@ export class MemoryStore {
     const rootPath = workspaceFolders[0].uri.fsPath;
     const absolutePath = path.join(rootPath, link.file_path);
 
-    if (!fs.existsSync(absolutePath)) {
+    let fileContent = '';
+    const openDoc = vscode.workspace.textDocuments.find(doc => doc.fileName === absolutePath);
+    if (openDoc) {
+      fileContent = openDoc.getText();
+    } else if (fs.existsSync(absolutePath)) {
+      fileContent = fs.readFileSync(absolutePath, 'utf8');
+    } else {
       return { isStale: true, reason: 'file_not_found' };
     }
 
@@ -190,27 +197,87 @@ export class MemoryStore {
     }
 
     try {
-      const fileContent = fs.readFileSync(absolutePath, 'utf8');
       const lines = fileContent.split(/\r?\n/);
       const startIdx = Math.max(0, link.line_start - 1);
       const endIdx = Math.min(lines.length, link.line_end);
 
-      if (startIdx >= lines.length) {
-        return { isStale: true, reason: 'modified', currentSnippet: '' };
+      let currentSnippet = '';
+      if (startIdx < lines.length) {
+        currentSnippet = lines.slice(startIdx, endIdx).join('\n').trim();
       }
 
-      const currentSnippet = lines.slice(startIdx, endIdx).join('\n').trim();
       const currentHash = computeContentHash(currentSnippet);
       const targetHash = link.content_hash || (link.code_snippet ? computeContentHash(link.code_snippet) : '');
 
-      if (targetHash && currentHash !== targetHash) {
-        return { isStale: true, reason: 'modified', currentSnippet };
+      if (targetHash && currentHash === targetHash) {
+        return { isStale: false };
       }
+
+      // Try to auto-align the snippet if it shifted elsewhere in the file
+      if (link.code_snippet) {
+        const match = this.findBestSnippetMatch(lines, link.code_snippet, link.line_start);
+        if (match) {
+          link.line_start = match.startLine;
+          link.line_end = match.endLine;
+          this.saveDatabase();
+          return { isStale: false };
+        }
+      }
+
+      return { isStale: true, reason: 'modified', currentSnippet };
     } catch (err) {
       console.warn('Failed to inspect file for stale memory check:', err);
     }
 
     return { isStale: false };
+  }
+
+  private findBestSnippetMatch(fileLines: string[], targetSnippet: string, originalStartLine: number): { startLine: number; endLine: number } | null {
+    const normalizedTarget = targetSnippet.replace(/\r\n/g, '\n').trim();
+    const targetLines = normalizedTarget.split('\n').map(l => l.trim()).filter(Boolean);
+    if (targetLines.length === 0) {
+      return null;
+    }
+
+    const matches: Array<{ startLine: number; endLine: number }> = [];
+
+    for (let i = 0; i <= fileLines.length - targetLines.length; i++) {
+      let match = true;
+      for (let j = 0; j < targetLines.length; j++) {
+        if (fileLines[i + j].trim() !== targetLines[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        matches.push({
+          startLine: i + 1,
+          endLine: i + targetLines.length
+        });
+      }
+    }
+
+    if (matches.length === 0) {
+      return null;
+    }
+
+    if (matches.length === 1) {
+      return matches[0];
+    }
+
+    // Pick the match closest to the original line position
+    let bestMatch = matches[0];
+    let minDiff = Math.abs(bestMatch.startLine - originalStartLine);
+
+    for (let k = 1; k < matches.length; k++) {
+      const diff = Math.abs(matches[k].startLine - originalStartLine);
+      if (diff < minDiff) {
+        minDiff = diff;
+        bestMatch = matches[k];
+      }
+    }
+
+    return bestMatch;
   }
 
   /**

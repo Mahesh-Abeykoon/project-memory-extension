@@ -5,7 +5,6 @@ import { MemoryType } from './types';
 import { getEnclosingSymbol } from './symbolHelper';
 import { exportMarkdownCommand } from './exportHelper';
 import { CommentHighlighter } from './commentHighlighter';
-import { resolveAuthorName } from './authorHelper';
 
 // Global decoration types for memory categories
 let decorationTypes: Record<string, vscode.TextEditorDecorationType> = {};
@@ -98,7 +97,7 @@ export function activate(context: vscode.ExtensionContext) {
         lineStart,
         lineEnd,
         selectedText,
-        resolveAuthorName(),
+        'Developer',
         symbolInfo?.name,
         symbolInfo?.kind,
         tags
@@ -250,6 +249,12 @@ function updateDecorations(editor: vscode.TextEditor, memoryStore: MemoryStore) 
   for (const link of links) {
     const memory = memoryStore.getMemoryById(link.memory_id);
     if (!memory) {continue;}
+
+    // Check if the link has drifted (lines shifted or snippet changed) and try to auto-heal
+    const staleInfo = memoryStore.checkLinkStaleStatus(link);
+    if (staleInfo.isStale) {
+      continue; // Skip rendering inline decoration if snippet is truly modified/deleted
+    }
 
     const docLineCount = editor.document.lineCount;
     const lineStart = Math.min(docLineCount, Math.max(1, link.line_start)) - 1;
