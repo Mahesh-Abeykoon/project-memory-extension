@@ -1,11 +1,11 @@
-# .vscode/**
-# .git/**
-# .gitignore
-# .memory/**
-# tsconfig.json
-# esbuild.js
-# src/**
-# node_modules/**
-# *.vsix
-# docs/**
-# package-lock.json
+.vscode/**
+.git/**
+.gitignore
+.memory/**
+tsconfig.json
+esbuild.js
+src/**
+node_modules/**
+*.vsix
+docs/**
+package-lock.json
